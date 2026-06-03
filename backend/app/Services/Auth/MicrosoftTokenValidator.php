@@ -23,10 +23,18 @@ class MicrosoftTokenValidator
                     ->json();
             });
 
-            $claims = (array) JWT::decode($idToken, JWK::parseKeySet($jwks));
+            $claims = (array) JWT::decode($idToken, JWK::parseKeySet($this->normalizeKeySet($jwks)));
         } catch (Throwable $exception) {
+            report($exception);
+
+            $message = 'Unable to validate the Microsoft identity token.';
+
+            if (config('app.debug')) {
+                $message .= ' '.$exception->getMessage();
+            }
+
             throw ValidationException::withMessages([
-                'id_token' => 'Unable to validate the Microsoft identity token.',
+                'id_token' => $message,
             ]);
         }
 
@@ -72,6 +80,23 @@ class MicrosoftTokenValidator
                 'id_token' => 'The Microsoft token audience is invalid for this application.',
             ]);
         }
+    }
+
+    private function normalizeKeySet(array $jwks): array
+    {
+        $keys = Arr::wrap($jwks['keys'] ?? []);
+
+        return [
+            'keys' => array_map(function ($key): array {
+                $normalized = (array) $key;
+
+                if (! array_key_exists('alg', $normalized)) {
+                    $normalized['alg'] = 'RS256';
+                }
+
+                return $normalized;
+            }, $keys),
+        ];
     }
 
     private function validateIssuer(array $claims): void

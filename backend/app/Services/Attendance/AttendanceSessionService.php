@@ -6,6 +6,7 @@ use App\Events\AttendanceSessionClosed;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
 use App\Models\Student;
+use App\Models\Subject;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Arr;
@@ -20,9 +21,11 @@ class AttendanceSessionService
 
     public function create(array $payload, User $actor): AttendanceSession
     {
+        $subjectId = $payload['subject_id'] ?? $this->defaultRollCallSubjectId();
+
         $session = AttendanceSession::query()->create([
             'class_id' => $payload['class_id'],
-            'subject_id' => $payload['subject_id'],
+            'subject_id' => $subjectId,
             'teacher_id' => $actor->id,
             'title' => $payload['title'],
             'notes' => $payload['notes'] ?? null,
@@ -68,21 +71,54 @@ class AttendanceSessionService
             ]);
         }
 
-        DB::transaction(function () use ($session, $records, $actor): void {
+        $changes = DB::transaction(function () use ($session, $records, $actor): array {
+            $existingByStudentId = AttendanceRecord::query()
+                ->where('attendance_session_id', $session->id)
+                ->whereIn('student_id', collect($records)->pluck('student_id')->all())
+                ->get()
+                ->keyBy('student_id');
+
+            $changes = [];
+
             foreach ($records as $record) {
+                $normalizedStatus = $this->normalizeStatus($record['status']);
+                /** @var AttendanceRecord|null $existing */
+                $existing = $existingByStudentId->get($record['student_id']);
+
+                $oldValues = $existing ? [
+                    'status' => $this->presentedStatus($existing->status),
+                    'remark' => $existing->remark,
+                    'marked_at' => optional($existing->marked_at)->toDateTimeString(),
+                ] : null;
+
                 AttendanceRecord::query()->updateOrCreate(
                     [
                         'attendance_session_id' => $session->id,
                         'student_id' => $record['student_id'],
                     ],
                     [
-                        'status' => $record['status'],
+                        'status' => $normalizedStatus,
                         'remark' => Arr::get($record, 'remark'),
                         'marked_by' => $actor->id,
                         'marked_at' => now(),
                     ],
                 );
+
+                $newValues = [
+                    'status' => $record['status'],
+                    'remark' => Arr::get($record, 'remark'),
+                ];
+
+                if (! $oldValues || $oldValues['status'] !== $newValues['status'] || $oldValues['remark'] !== $newValues['remark']) {
+                    $changes[] = [
+                        'student_id' => $record['student_id'],
+                        'old' => $oldValues,
+                        'new' => $newValues,
+                    ];
+                }
             }
+
+            return $changes;
         });
 
         $this->auditLogger->log(
@@ -90,8 +126,12 @@ class AttendanceSessionService
             'attendance.records.upserted',
             'Updated attendance records for a session.',
             $session,
-            [],
-            ['record_count' => count($records)],
+            ['records' => collect($changes)->pluck('old', 'student_id')->filter(fn ($value) => $value !== null)->all()],
+            [
+                'record_count' => count($records),
+                'changed_count' => count($changes),
+                'changes' => $changes,
+            ],
         );
 
         return $session->fresh(['classRoom', 'subject', 'teacher', 'records.student']);
@@ -121,5 +161,35 @@ class AttendanceSessionService
         );
 
         return $session->fresh(['classRoom', 'subject', 'teacher', 'records.student']);
+    }
+
+    private function defaultRollCallSubjectId(): int
+    {
+        $subject = Subject::query()->firstOrCreate(
+            ['code' => 'ROLL-CALL'],
+            ['name' => 'General Roll Call', 'description' => 'Stream-based class roll call.'],
+        );
+
+        return $subject->id;
+    }
+
+    private function normalizeStatus(string $status): string
+    {
+        return match ($status) {
+            'missing' => 'absent',
+            'sick' => 'excused',
+            'on_leave' => 'late',
+            default => $status,
+        };
+    }
+
+    private function presentedStatus(string $storedStatus): string
+    {
+        return match ($storedStatus) {
+            'absent' => 'missing',
+            'excused' => 'sick',
+            'late' => 'on_leave',
+            default => $storedStatus,
+        };
     }
 }

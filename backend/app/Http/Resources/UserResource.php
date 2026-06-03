@@ -28,6 +28,16 @@ class UserResource extends JsonResource
                 'provider_email' => $identity->provider_email,
                 'last_login_at' => $identity->last_login_at,
             ])),
+            'schools' => $this->whenLoaded('schools', fn () => $this->schools->map(fn ($school) => [
+                'id' => $school->id,
+                'name' => $school->name,
+                'code' => $school->code,
+                'level' => $school->level,
+            ])),
+            'class_assignments' => $this->whenLoaded(
+                'classAssignments',
+                fn () => TeacherClassAssignmentResource::collection($this->classAssignments),
+            ),
         ];
     }
 }

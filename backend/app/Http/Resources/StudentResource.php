@@ -26,6 +26,13 @@ class StudentResource extends JsonResource
                 'id' => $this->classRoom->id,
                 'name' => $this->classRoom->name,
                 'code' => $this->classRoom->code,
+                'grade_level' => $this->classRoom->grade_level,
+                'section' => $this->classRoom->section,
+                'school' => $this->classRoom->school ? [
+                    'id' => $this->classRoom->school->id,
+                    'name' => $this->classRoom->school->name,
+                    'code' => $this->classRoom->school->code,
+                ] : null,
             ] : null,
         ];
     }

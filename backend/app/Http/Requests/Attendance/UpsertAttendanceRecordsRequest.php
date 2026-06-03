@@ -16,7 +16,7 @@ class UpsertAttendanceRecordsRequest extends FormRequest
         return [
             'records' => ['required', 'array', 'min:1'],
             'records.*.student_id' => ['required', 'integer', 'exists:students,id'],
-            'records.*.status' => ['required', 'in:present,absent,late,excused'],
+            'records.*.status' => ['required', 'in:present,missing,sick,on_leave,absent,late,excused'],
             'records.*.remark' => ['nullable', 'string'],
         ];
     }

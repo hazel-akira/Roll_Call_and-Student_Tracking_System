@@ -73,4 +73,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(RefreshToken::class);
     }
+
+    public function schools(): BelongsToMany
+    {
+        return $this->belongsToMany(School::class, 'school_user')->withTimestamps();
+    }
+
+    public function classAssignments(): HasMany
+    {
+        return $this->hasMany(TeacherSubject::class, 'teacher_id');
+    }
 }

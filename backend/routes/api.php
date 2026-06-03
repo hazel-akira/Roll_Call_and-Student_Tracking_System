@@ -6,9 +6,12 @@ use App\Http\Controllers\Attendance\AttendanceSessionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\MicrosoftAuthController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\Dynamics\DynamicsStudentSyncController;
 use App\Http\Controllers\Dynamics\DynamicsSyncController;
+use App\Http\Controllers\Dynamics\DynamicsAttendanceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\Students\StudentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
@@ -25,14 +28,19 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::middleware('auth.jwt')->group(function (): void {
+    Route::middleware(['auth.jwt', 'tenant.class'])->group(function (): void {
         Route::get('dashboard/admin', [AdminDashboardController::class, 'index'])->middleware('role:admin,ict_staff');
         Route::get('dashboard/teacher', [AdminDashboardController::class, 'teacher']);
 
         Route::get('classes', [ClassController::class, 'index']);
+        Route::get('schools', [SchoolController::class, 'index']);
+        Route::get('schools/current', [SchoolController::class, 'current']);
+        Route::post('schools/select', [SchoolController::class, 'select']);
+        Route::post('schools/clear', [SchoolController::class, 'clear'])->middleware('role:admin,ict_staff');
         Route::get('subjects', [SubjectController::class, 'index']);
         Route::get('teachers', [TeacherController::class, 'index'])->middleware('role:admin,ict_staff');
-
+        Route::put('teachers/{user}/schools', [TeacherController::class, 'syncSchools'])->middleware('role:admin,ict_staff');
+        Route::put('teachers/{user}/assignments', [TeacherController::class, 'syncAssignments'])->middleware('role:admin,ict_staff');
         Route::get('students', [StudentController::class, 'index']);
         Route::get('students/{student}', [StudentController::class, 'show']);
         Route::get('students/{student}/attendance-history', [StudentController::class, 'history']);
@@ -54,5 +62,8 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('dynamics/syncs', [DynamicsSyncController::class, 'index'])->middleware('role:admin,ict_staff');
         Route::post('dynamics/syncs/{dynamicsSync}/retry', [DynamicsSyncController::class, 'retry'])->middleware('role:admin,ict_staff');
+        Route::post('dynamics/classes/{class}/students/sync', [DynamicsStudentSyncController::class, 'syncClass'])->middleware('role:admin,ict_staff');
+        Route::get('dynamics/attendance/form-streams', [DynamicsAttendanceController::class, 'formStreams']);
+        Route::get('dynamics/attendance/students', [DynamicsAttendanceController::class, 'students']);
     });
 });

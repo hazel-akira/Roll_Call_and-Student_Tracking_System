@@ -30,6 +30,21 @@ return [
         'issuer_prefix' => env('MICROSOFT_ISSUER_PREFIX', 'https://login.microsoftonline.com'),
     ],
 
+    'microsoft_graph' => [
+        'client_id' => env('MS_GRAPH_CLIENT_ID'),
+        'client_secret' => env('MS_GRAPH_CLIENT_SECRET'),
+        'tenant' => env('MS_GRAPH_TENANT_ID'),
+        'mail_from' => env('MS_GRAPH_MAIL_FROM'),
+    ],
+
+    'onfon' => [
+        'url' => env('ONFON_URL', ''),
+        'access_key' => env('ONFON_ACCESS_KEY', ''),
+        'api_key' => env('ONFON_API_KEY', ''),
+        'client_id' => env('ONFON_CLIENT_ID', ''),
+        'sender_id' => env('ONFON_SENDER_ID', ''),
+    ],
+
     'dynamics' => [
         'base_url' => env('DYNAMICS_BASE_URL'),
         'tenant_id' => env('DYNAMICS_TENANT_ID'),

@@ -7,16 +7,24 @@ use App\Http\Requests\Students\StudentIndexRequest;
 use App\Http\Resources\StudentResource;
 use App\Models\AttendanceRecord;
 use App\Models\Student;
+use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class StudentController extends Controller
 {
+    public function __construct(
+        private readonly TenantService $tenantService,
+    ) {
+    }
+
     public function index(StudentIndexRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
-        $students = Student::query()
-            ->with('classRoom')
+        $students = $this->tenantService
+            ->scopeViaClassSchool(Student::query(), $request)
+            ->with(['classRoom.school'])
             ->when($validated['q'] ?? null, function ($query, string $search): void {
                 $query->where(function ($builder) use ($search): void {
                     $builder
@@ -27,6 +35,25 @@ class StudentController extends Controller
                 });
             })
             ->when($validated['class_id'] ?? null, fn ($query, int $classId) => $query->where('class_id', $classId))
+            ->when(
+                ! ($validated['class_id'] ?? null) && ($validated['grade_level'] ?? null),
+                function ($query) use ($validated): void {
+                    $gradeLevel = $validated['grade_level'];
+                    $stream = $validated['stream'] ?? null;
+
+                    $query->whereHas('classRoom', function ($classQuery) use ($gradeLevel, $stream): void {
+                        $classQuery->where('grade_level', $gradeLevel);
+
+                        if ($stream === null || $stream === '') {
+                            $classQuery->where(function ($sectionQuery): void {
+                                $sectionQuery->whereNull('section')->orWhere('section', '');
+                            });
+                        } else {
+                            $classQuery->where('section', $stream);
+                        }
+                    });
+                },
+            )
             ->when($validated['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->orderBy('last_name')
             ->paginate($validated['per_page'] ?? 15);
@@ -36,15 +63,18 @@ class StudentController extends Controller
         ]);
     }
 
-    public function show(Student $student): JsonResponse
+    public function show(Student $student, StudentIndexRequest $request): JsonResponse
     {
+        $this->ensureStudentAccessible($student, $request);
+
         return response()->json([
-            'data' => StudentResource::make($student->load('classRoom')),
+            'data' => StudentResource::make($student->load('classRoom.school')),
         ]);
     }
 
-    public function history(Student $student): JsonResponse
+    public function history(Student $student, StudentIndexRequest $request): JsonResponse
     {
+        $this->ensureStudentAccessible($student, $request);
         $history = AttendanceRecord::query()
             ->with(['session.subject', 'session.classRoom'])
             ->where('student_id', $student->id)
@@ -70,5 +100,17 @@ class StudentController extends Controller
             'student' => StudentResource::make($student->load('classRoom')),
             'history' => $history,
         ]);
+    }
+
+    private function ensureStudentAccessible(Student $student, StudentIndexRequest $request): void
+    {
+        if (! $this->tenantService->shouldApplySchoolScope($request->user(), $request)) {
+            return;
+        }
+
+        $student->loadMissing('classRoom');
+        if (! $student->classRoom || ! $this->tenantService->classBelongsToEffectiveSchool($student->classRoom, $request)) {
+            throw new NotFoundHttpException('Student not found.');
+        }
     }
 }

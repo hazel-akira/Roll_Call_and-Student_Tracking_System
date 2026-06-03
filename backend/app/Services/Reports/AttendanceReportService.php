@@ -25,6 +25,7 @@ class AttendanceReportService
             ->join('attendance_records', 'attendance_records.attendance_session_id', '=', 'attendance_sessions.id')
             ->when($filters['from'] ?? null, fn (Builder $query, string $from) => $query->whereDate('session_date', '>=', $from))
             ->when($filters['to'] ?? null, fn (Builder $query, string $to) => $query->whereDate('session_date', '<=', $to))
+            ->when($filters['school_id'] ?? null, fn (Builder $query, int $schoolId) => $query->whereHas('classRoom', fn (Builder $classQuery) => $classQuery->where('school_id', $schoolId)))
             ->when($filters['class_id'] ?? null, fn (Builder $query, int $classId) => $query->where('class_id', $classId))
             ->when($filters['subject_id'] ?? null, fn (Builder $query, int $subjectId) => $query->where('subject_id', $subjectId))
             ->when($filters['teacher_id'] ?? null, fn (Builder $query, int $teacherId) => $query->where('teacher_id', $teacherId))
@@ -53,6 +54,7 @@ class AttendanceReportService
             ->join('attendance_records', 'attendance_records.attendance_session_id', '=', 'attendance_sessions.id')
             ->when($filters['from'] ?? null, fn (Builder $query, string $from) => $query->whereDate('session_date', '>=', $from))
             ->when($filters['to'] ?? null, fn (Builder $query, string $to) => $query->whereDate('session_date', '<=', $to))
+            ->when($filters['school_id'] ?? null, fn (Builder $query, int $schoolId) => $query->where('classes.school_id', $schoolId))
             ->when($filters['class_id'] ?? null, fn (Builder $query, int $classId) => $query->where('attendance_sessions.class_id', $classId))
             ->when($filters['subject_id'] ?? null, fn (Builder $query, int $subjectId) => $query->where('attendance_sessions.subject_id', $subjectId))
             ->groupBy('classes.id', 'classes.name', 'attendance_records.status')
@@ -68,6 +70,7 @@ class AttendanceReportService
             ->join('attendance_sessions', 'attendance_sessions.id', '=', 'attendance_records.attendance_session_id')
             ->when($filters['from'] ?? null, fn (Builder $query, string $from) => $query->whereDate('attendance_sessions.session_date', '>=', $from))
             ->when($filters['to'] ?? null, fn (Builder $query, string $to) => $query->whereDate('attendance_sessions.session_date', '<=', $to))
+            ->when($filters['school_id'] ?? null, fn (Builder $query, int $schoolId) => $query->whereHas('student.classRoom', fn (Builder $classQuery) => $classQuery->where('school_id', $schoolId)))
             ->when($filters['class_id'] ?? null, fn (Builder $query, int $classId) => $query->where('students.class_id', $classId))
             ->groupBy('students.id', 'students.first_name', 'students.last_name')
             ->orderByDesc('absent_count')
@@ -101,6 +104,7 @@ class AttendanceReportService
                 $query
                     ->when($filters['from'] ?? null, fn (Builder $builder, string $from) => $builder->whereDate('session_date', '>=', $from))
                     ->when($filters['to'] ?? null, fn (Builder $builder, string $to) => $builder->whereDate('session_date', '<=', $to))
+                    ->when($filters['school_id'] ?? null, fn (Builder $builder, int $schoolId) => $builder->whereHas('classRoom', fn (Builder $classQuery) => $classQuery->where('school_id', $schoolId)))
                     ->when($filters['class_id'] ?? null, fn (Builder $builder, int $classId) => $builder->where('class_id', $classId))
                     ->when($filters['subject_id'] ?? null, fn (Builder $builder, int $subjectId) => $builder->where('subject_id', $subjectId))
                     ->when($filters['teacher_id'] ?? null, fn (Builder $builder, int $teacherId) => $builder->where('teacher_id', $teacherId));

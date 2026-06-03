@@ -14,12 +14,19 @@ class SchoolClass extends Model
     protected $table = 'classes';
 
     protected $fillable = [
+        'school_id',
         'name',
         'code',
+        'grade_level',
         'section',
         'academic_year',
         'homeroom_teacher_id',
     ];
+
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class);
+    }
 
     public function students(): HasMany
     {

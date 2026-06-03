@@ -67,6 +67,6 @@ class ResolveMicrosoftUser
             ],
         );
 
-        return $user->fresh(['role', 'identities']);
+        return $user->fresh(['role', 'identities', 'schools']);
     }
 }

@@ -3,15 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Models\SchoolClass;
+use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ClassController extends Controller
 {
-    public function index(): JsonResponse
+    public function __construct(
+        private readonly TenantService $tenantService,
+    ) {
+    }
+
+    public function index(Request $request): JsonResponse
     {
-        $classes = SchoolClass::query()
-            ->with('homeroomTeacher:id,name,email')
+        $classes = $this->tenantService->scopeTeacherAssignedClasses(
+            $this->tenantService->scopeSchoolClasses(SchoolClass::query(), $request),
+            $request->user(),
+        )
+            ->with(['school:id,name,code', 'homeroomTeacher:id,name,email'])
             ->withCount('students')
+            ->orderBy('grade_level')
             ->orderBy('name')
             ->get();
 

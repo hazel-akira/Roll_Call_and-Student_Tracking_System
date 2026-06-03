@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RoleSeeder::class);
+        $this->call(SchoolAndClassSeeder::class);
+        $this->call(SchoolUserSeeder::class);
 
         $adminEmail = env('SEED_ADMIN_EMAIL');
 

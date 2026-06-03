@@ -23,6 +23,9 @@ class AttendanceSessionResource extends JsonResource
                 'id' => $this->classRoom->id,
                 'name' => $this->classRoom->name,
                 'code' => $this->classRoom->code,
+                'grade_level' => $this->classRoom->grade_level,
+                'section' => $this->classRoom->section,
+                'school_id' => $this->classRoom->school_id,
             ] : null,
             'subject' => $this->subject ? [
                 'id' => $this->subject->id,
@@ -36,7 +39,12 @@ class AttendanceSessionResource extends JsonResource
             ] : null,
             'records' => $this->whenLoaded('records', fn () => $this->records->map(fn ($record) => [
                 'id' => $record->id,
-                'status' => $record->status,
+                'status' => match ($record->status) {
+                    'absent' => 'missing',
+                    'excused' => 'sick',
+                    'late' => 'on_leave',
+                    default => $record->status,
+                },
                 'remark' => $record->remark,
                 'marked_at' => $record->marked_at,
                 'student' => $record->student ? [

@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\JwtIssuer;
 use App\Services\Auth\MicrosoftTokenValidator;
+use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,7 @@ class MicrosoftAuthController extends Controller
         private readonly ResolveMicrosoftUser $resolveMicrosoftUser,
         private readonly JwtIssuer $jwtIssuer,
         private readonly AuditLogger $auditLogger,
+        private readonly TenantService $tenantService,
     ) {
     }
 
@@ -44,7 +46,8 @@ class MicrosoftAuthController extends Controller
 
         return response()->json([
             'message' => 'Microsoft sign-in completed successfully.',
-            'user' => UserResource::make($user),
+            'user' => UserResource::make($user->loadMissing(['role', 'identities', 'schools'])),
+            'current_school_id' => $this->tenantService->getCurrentSchoolId(),
             'tokens' => $tokens,
         ]);
     }
@@ -52,7 +55,8 @@ class MicrosoftAuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => UserResource::make($request->user()->loadMissing(['role', 'identities'])),
+            'user' => UserResource::make($request->user()->loadMissing(['role', 'identities', 'schools'])),
+            'current_school_id' => $this->tenantService->getCurrentSchoolId(),
         ]);
     }
 

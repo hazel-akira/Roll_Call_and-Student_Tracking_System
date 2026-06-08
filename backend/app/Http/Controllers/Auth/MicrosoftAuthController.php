@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\JwtIssuer;
 use App\Services\Auth\MicrosoftTokenValidator;
+use App\Services\Auth\UserAccessService;
 use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class MicrosoftAuthController extends Controller
         private readonly JwtIssuer $jwtIssuer,
         private readonly AuditLogger $auditLogger,
         private readonly TenantService $tenantService,
+        private readonly UserAccessService $userAccessService,
     ) {
     }
 
@@ -32,6 +34,23 @@ class MicrosoftAuthController extends Controller
         );
 
         $user = $this->resolveMicrosoftUser->execute($claims);
+
+        if (! $this->userAccessService->canSignIn($user)) {
+            return response()->json([
+                'message' => $this->userAccessService->signInBlockedMessage($user),
+                'code' => 'account_not_active',
+                'status' => $user->status,
+            ], 403);
+        }
+
+        if (! $this->userAccessService->hasSchoolAccess($user)) {
+            return response()->json([
+                'message' => 'Your account is active but no school has been assigned yet. Ask an administrator to assign school access.',
+                'code' => 'school_access_required',
+                'status' => $user->status,
+            ], 403);
+        }
+
         $tokens = $this->jwtIssuer->createTokenPair($user, $request);
 
         $this->auditLogger->log(

@@ -35,6 +35,10 @@ Local defaults assume:
 
 The root `Makefile` provides a shared entry point for common setup and validation commands.
 
+## Filament panels (backend)
+
+Administrators manage schools and user school access at `/admin`. Teachers manage attendance sessions at `/teacher`. See [filament-panels.md](./filament-panels.md).
+
 ## Local Workflow
 
 Use the shared targets when you want one command surface at the repository root:

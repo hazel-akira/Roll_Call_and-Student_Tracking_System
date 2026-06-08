@@ -30,13 +30,15 @@ class ResolveMicrosoftUser
         if (! $user) {
             $defaultRole = Role::query()->where('slug', env('AUTH_DEFAULT_ROLE_SLUG', 'teacher'))->first();
 
+            $autoActivate = filter_var(env('AUTH_AUTO_ACTIVATE_SSO_USERS', false), FILTER_VALIDATE_BOOL);
+
             $user = User::query()->create([
                 'role_id' => $defaultRole?->id,
                 'name' => (string) Arr::get($claims, 'name', $email ?: 'Microsoft User'),
                 'email' => $email ?: sprintf('%s@placeholder.local', $subject),
                 'job_title' => Arr::get($claims, 'job_title'),
                 'department' => Arr::get($claims, 'department'),
-                'status' => 'active',
+                'status' => $autoActivate ? 'active' : 'pending',
                 'last_login_at' => now(),
             ]);
         } else {

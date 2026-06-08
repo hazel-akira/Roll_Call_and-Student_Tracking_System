@@ -1663,13 +1663,13 @@ class DynamicsService
 
         foreach ($filters as $filter) {
             $rows = $this->get($entity, [
-                '$select' => 'ses_roomid,ses_roomsid,ses_room,ses_roomname',
+                '$select' => 'ses_roomid,ses_room,ses_roomname',
                 '$filter' => $filter,
                 '$top' => 1,
             ]);
 
             if ($rows !== []) {
-                return (string) ($rows[0]['ses_roomid'] ?? $rows[0]['ses_roomsid'] ?? '');
+                return (string) ($rows[0]['ses_roomid'] ?? '');
             }
         }
 

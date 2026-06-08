@@ -7,5 +7,9 @@ Route::get('/', function () {
         'name' => 'Roll Call and Student Tracking API',
         'status' => 'ok',
         'version' => 'v1',
+        'panels' => [
+            'admin' => url('/admin'),
+            'teacher' => url('/teacher'),
+        ],
     ]);
 });

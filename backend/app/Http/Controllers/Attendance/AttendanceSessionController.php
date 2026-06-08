@@ -7,7 +7,6 @@ use App\Http\Requests\Attendance\StoreAttendanceSessionRequest;
 use App\Http\Resources\AttendanceSessionResource;
 use App\Models\AttendanceSession;
 use App\Services\Attendance\AttendanceSessionService;
-use App\Services\TeacherAssignmentService;
 use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,12 +27,9 @@ class AttendanceSessionController extends Controller
             ->latest('session_date');
 
         if ($request->user()?->role?->slug === 'teacher') {
+            // Only sessions this teacher created — do not filter by class assignment here,
+            // or newly created sessions for Dataverse-resolved classes vanish from the list.
             $query->where('teacher_id', $request->user()->id);
-
-            $classIds = app(TeacherAssignmentService::class)->assignedClassIds($request->user());
-            if ($classIds !== []) {
-                $query->whereIn('class_id', $classIds);
-            }
         }
 
         if ($request->filled('class_id')) {

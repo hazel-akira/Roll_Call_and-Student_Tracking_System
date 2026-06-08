@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
 
@@ -82,5 +84,18 @@ class User extends Authenticatable
     public function classAssignments(): HasMany
     {
         return $this->hasMany(TeacherSubject::class, 'teacher_id');
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        return match ($panel->getId()) {
+            'admin' => in_array($this->role?->slug, ['admin', 'ict_staff'], true),
+            'teacher' => in_array($this->role?->slug, ['teacher', 'admin', 'ict_staff'], true),
+            default => false,
+        };
     }
 }

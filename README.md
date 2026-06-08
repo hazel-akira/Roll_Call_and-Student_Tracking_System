@@ -2,7 +2,7 @@
 
 Enterprise-grade attendance and student tracking platform organized as a monorepo with:
 
-- `backend`: Laravel 13 API for auth, attendance, reporting, audit logs, notifications, and Dynamics sync jobs
+- `backend`: Laravel 13 API for auth, attendance, reporting, audit logs, notifications, Dynamics sync jobs, and Filament admin/teacher panels
 - `frontend`: Next.js 16 dashboard for Microsoft sign-in, role-aware navigation, and teacher/admin workflows
 - `docs`: architecture, development, deployment, and integration guidance
 
@@ -44,6 +44,8 @@ php artisan key:generate
 php artisan migrate --seed
 php artisan serve
 ```
+
+Filament panels (after migrate): `/admin` for schools and users, `/teacher` for attendance sessions. See `docs/filament-panels.md`. Create a panel login with `php artisan make:filament-user`.
 
 ### Manual Frontend Setup
 

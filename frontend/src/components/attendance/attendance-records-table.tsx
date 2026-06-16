@@ -1,0 +1,194 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { AttendanceSession, Student } from "@/types";
+
+const statuses = ["present", "missing", "sick", "on_leave"] as const;
+
+export function AttendanceRecordsTable({
+  session,
+  students,
+  onSave,
+  onCloseSession,
+}: {
+  session: AttendanceSession | null;
+  students: Student[];
+  onSave: (records: {
+    student_id: number;
+    status: "present" | "missing" | "sick" | "on_leave";
+    remark?: string;
+  }[]) => Promise<void>;
+  onCloseSession: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [remarks, setRemarks] = useState<Record<number, string>>({});
+  const [statusMap, setStatusMap] = useState<Record<number, typeof statuses[number]>>({});
+
+  const rows = useMemo(() => {
+    if (!session) return [];
+
+    return students
+      .filter((student) => Number.isFinite(student.id) && student.id > 0)
+      .map((student) => {
+        const existing = session.records?.find((record) => record.student?.id === student.id);
+        return {
+          student,
+          status: statusMap[student.id] ?? existing?.status ?? "present",
+          remark: remarks[student.id] ?? existing?.remark ?? "",
+        };
+      });
+  }, [remarks, session, statusMap, students]);
+
+  const hasSyncableStudents = rows.length > 0;
+
+  if (!session) {
+    return (
+      <Card className="p-6 text-sm text-slate-500 dark:text-slate-400">
+        Select an attendance session to capture roll call records.
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {session.title}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {(session.class?.grade_level ?? session.class?.name) || "Class"} · {session.class?.section ?? "Stream"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge value={session.status} />
+          <Badge value={session.dynamics_sync_status} />
+        </div>
+      </div>
+      <div className="flex justify-end border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+        <Button
+          variant="secondary"
+          disabled={busy || session.status === "closed"}
+          onClick={() => {
+            const next: Record<number, typeof statuses[number]> = {};
+            rows.forEach((row) => {
+              next[row.student.id] = "present";
+            });
+            setStatusMap(next);
+          }}
+        >
+          Mark All Present
+        </Button>
+      </div>
+      {!hasSyncableStudents ? (
+        <p className="border-b border-slate-200 px-5 py-4 text-sm text-amber-800 dark:border-slate-800 dark:text-amber-200">
+          Students are still loading from Dataverse or are not synced to this class yet. Wait for the
+          list to appear, or use Sync students from Dynamics, before saving attendance.
+        </p>
+      ) : null}
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+            <tr>
+              <th className="px-5 py-3 font-medium">Student</th>
+              <th className="px-5 py-3 font-medium">Admission #</th>
+              <th className="px-5 py-3 font-medium">Status</th>
+              <th className="px-5 py-3 font-medium">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.student.id} className="border-t border-slate-200 dark:border-slate-800">
+                <td className="px-5 py-3 font-medium text-slate-900 dark:text-white">
+                  {row.student.full_name}
+                </td>
+                <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
+                  {row.student.admission_number}
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {statuses.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                          row.status === status
+                            ? "border-(--color-primary) bg-(--surface-muted) text-(--color-primary)"
+                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        }`}
+                        onClick={() =>
+                          setStatusMap((current) => ({
+                            ...current,
+                            [row.student.id]: status,
+                          }))
+                        }
+                      >
+                        {status === "on_leave" ? "On Leave" : status.charAt(0).toUpperCase() + status.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-5 py-3">
+                  <input
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="Optional remark"
+                    value={row.remark}
+                    onChange={(event) =>
+                      setRemarks((current) => ({
+                        ...current,
+                        [row.student.id]: event.target.value,
+                      }))
+                    }
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+        <Button
+          variant="outline"
+          disabled={busy || session.status === "closed"}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onCloseSession();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Close session
+        </Button>
+        <Button
+          disabled={busy || session.status === "closed" || !hasSyncableStudents}
+          title={
+            hasSyncableStudents
+              ? undefined
+              : "Wait for students to finish loading from Dataverse before saving."
+          }
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onSave(
+                rows.map((row) => ({
+                  student_id: row.student.id,
+                  status: row.status,
+                  remark: row.remark || undefined,
+                })),
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Saving..." : "Save attendance"}
+        </Button>
+      </div>
+    </Card>
+  );
+}

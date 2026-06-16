@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #df8811;
+  --color-primary-deep: #0d3158;
+  --color-accent: #df8811;
+  --color-accent-dark: #b78f14;
+  --color-highlight: #d6da54;
+  --color-background: #f8fafc;
+  --shadow-card: 0 18px 40px rgba(30, 58, 138, 0.12);
+  --border-soft: 1px solid rgba(148, 163, 184, 0.18);
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --container-width: 1120px;
+  --background: var(--color-background);
+  --foreground: #15253d;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-solid: #ffffff;
+  --surface-muted: #f0f4f8;
+  --text-muted: #5b6b81;
+  --border-muted: rgba(117, 142, 170, 0.874);
+}
+
+.dark {
+  --background: #09111d;
+  --foreground: #e8eef8;
+  --surface: rgba(10, 21, 38, 0.94);
+  --surface-solid: #10203a;
+  --surface-muted: #142949;
+  --text-muted: #a8bbd4;
+  --border-muted: rgba(212, 174, 43, 0.18);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(212, 174, 43, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(18, 59, 105, 0.03) 0%, rgba(18, 59, 105, 0) 32%),
+    var(--background);
+  color: var(--foreground);
+}
+
+* {
+  border-color: var(--border-muted);
+}

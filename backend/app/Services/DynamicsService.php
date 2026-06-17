@@ -175,6 +175,111 @@ class DynamicsService
         return $json['value'] ?? [];
     }
 
+    /**
+     * @return array{id: string|null, status: int, body: array<string, mixed>|null}
+     */
+    public function create(string $entitySet, array $payload): array
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            throw new \RuntimeException('Unable to obtain a Dynamics access token.');
+        }
+
+        $entitySet = trim($entitySet, '/');
+        $url = $this->baseUrl."/api/data/{$this->apiVersion}/{$entitySet}";
+
+        /** @var Response $response */
+        $response = $this->httpClient($token)
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, $payload);
+
+        if (! $response->successful() && $response->status() !== 204) {
+            Log::warning('Dynamics create request failed', [
+                'entity' => $entitySet,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            $response->throw();
+        }
+
+        $entityIdHeader = $response->header('OData-EntityId') ?? $response->header('odata-entityid');
+
+        return [
+            'id' => $this->parseEntityIdFromHeader($entityIdHeader),
+            'status' => $response->status(),
+            'body' => $response->json(),
+        ];
+    }
+
+    public function resolveSchoolDynamicsId(?string $schoolName): ?string
+    {
+        $schoolName = trim((string) $schoolName);
+        if ($schoolName === '') {
+            return null;
+        }
+
+        $entity = config('dynamics.attendance.school_entity', 'ses_schools');
+        $nameColumn = config('dynamics.school_name_column', 'ses_school');
+        $escaped = str_replace("'", "''", $schoolName);
+
+        $rows = $this->get($entity, [
+            '$filter' => "{$nameColumn} eq '{$escaped}'",
+            '$select' => config('dynamics.attendance.school_lookup', 'ses_schoolid'),
+            '$top' => 1,
+        ]);
+
+        $idColumn = config('dynamics.attendance.school_lookup', 'ses_schoolid');
+
+        return isset($rows[0][$idColumn]) ? (string) $rows[0][$idColumn] : null;
+    }
+
+    public function resolveClassDynamicsId(?string $roomId, ?string $className): ?string
+    {
+        $entity = config('dynamics.attendance.class_entity', 'ses_classes');
+        $idColumn = config('dynamics.attendance.class_lookup', 'ses_classid');
+
+        $roomId = trim((string) $roomId);
+        if ($roomId !== '') {
+            $rows = $this->get($entity, [
+                '$filter' => "_ses_room_value eq {$roomId}",
+                '$select' => $idColumn,
+                '$top' => 1,
+            ]);
+
+            if (isset($rows[0][$idColumn])) {
+                return (string) $rows[0][$idColumn];
+            }
+        }
+
+        $className = trim((string) $className);
+        if ($className === '') {
+            return null;
+        }
+
+        $escaped = str_replace("'", "''", $className);
+        $rows = $this->get($entity, [
+            '$filter' => "ses_classname eq '{$escaped}'",
+            '$select' => $idColumn,
+            '$top' => 1,
+        ]);
+
+        return isset($rows[0][$idColumn]) ? (string) $rows[0][$idColumn] : null;
+    }
+
+    private function parseEntityIdFromHeader(?string $header): ?string
+    {
+        if (! is_string($header) || $header === '') {
+            return null;
+        }
+
+        if (preg_match('/\(([0-9a-f-]{36})\)/i', $header, $matches) === 1) {
+            return strtolower($matches[1]);
+        }
+
+        return null;
+    }
+
     private function httpClient(?string $token = null): PendingRequest
     {
         $client = Http::timeout((int) config('dynamics.timeout', 30))
@@ -969,22 +1074,26 @@ class DynamicsService
     {
         $entity = config('dynamics.entities.student', 'ses_students');
         $cols = config('dynamics.student_columns', []);
+        $schoolName = $this->resolveDataverseSchoolName((string) $class->school_id);
 
         $byRoom = $this->getStudentsByRoom(
             roomName: $class->section ?: null,
-            schoolName: $this->resolveDataverseSchoolName((string) $class->school_id),
+            schoolName: $schoolName,
         );
 
         if ($byRoom !== []) {
-            return $byRoom;
+            return $this->applySchoolEmailDomainFilter($byRoom, $schoolName);
         }
 
-        return $this->getStudentsByClassNameMatch(
-            entity: $entity,
-            cols: $cols,
-            schoolName: $this->resolveDataverseSchoolName((string) $class->school_id),
-            gradeLevel: $class->grade_level,
-            stream: $class->section,
+        return $this->applySchoolEmailDomainFilter(
+            $this->getStudentsByClassNameMatch(
+                entity: $entity,
+                cols: $cols,
+                schoolName: $schoolName,
+                gradeLevel: $class->grade_level,
+                stream: $class->section,
+            ),
+            $schoolName,
         );
     }
 
@@ -1590,17 +1699,72 @@ class DynamicsService
                 schoolName: $schoolName,
             );
             if ($byRoom !== []) {
-                return $byRoom;
+                return $this->applySchoolEmailDomainFilter($byRoom, $schoolName);
             }
         }
 
-        return $this->getStudentsByClassNameMatch(
-            entity: $entity,
-            cols: $cols,
-            schoolName: $schoolName,
-            gradeLevel: $gradeLevel,
-            stream: $stream,
+        return $this->applySchoolEmailDomainFilter(
+            $this->getStudentsByClassNameMatch(
+                entity: $entity,
+                cols: $cols,
+                schoolName: $schoolName,
+                gradeLevel: $gradeLevel,
+                stream: $stream,
+            ),
+            $schoolName,
         );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $students
+     * @return list<array<string, mixed>>
+     */
+    private function applySchoolEmailDomainFilter(array $students, ?string $schoolName): array
+    {
+        $schoolCode = $this->resolveSchoolCodeFromDataverseName($schoolName);
+        if ($schoolCode === null) {
+            return $students;
+        }
+
+        $allowedDomains = config("schools.email_domains.{$schoolCode}", []);
+        if ($allowedDomains === []) {
+            return $students;
+        }
+
+        $allowedDomains = array_map(
+            static fn (string $domain): string => strtolower(trim($domain)),
+            $allowedDomains,
+        );
+
+        return array_values(array_filter($students, function (array $student) use ($allowedDomains): bool {
+            $email = strtolower(trim((string) ($student['email'] ?? '')));
+            if ($email === '' || ! str_contains($email, '@')) {
+                return true;
+            }
+
+            $domain = strtolower(trim((string) substr(strrchr($email, '@'), 1)));
+            $domain = preg_replace('/[^\x20-\x7E]/', '', $domain) ?? $domain;
+
+            return in_array($domain, $allowedDomains, true);
+        }));
+    }
+
+    private function resolveSchoolCodeFromDataverseName(?string $schoolName): ?string
+    {
+        $schoolName = trim((string) $schoolName);
+        if ($schoolName === '') {
+            return null;
+        }
+
+        foreach (config('schools.dynamics_names', []) as $code => $name) {
+            if (strcasecmp((string) $name, $schoolName) === 0) {
+                return (string) $code;
+            }
+        }
+
+        $school = School::query()->where('name', $schoolName)->first();
+
+        return $school?->code;
     }
 
     /**
@@ -1632,7 +1796,7 @@ class DynamicsService
         return [];
     }
 
-    private function resolveRoomIdByName(string $roomName, ?string $schoolName = null): ?string
+    public function resolveRoomIdByName(string $roomName, ?string $schoolName = null): ?string
     {
         $roomName = trim($roomName);
         if ($roomName === '') {

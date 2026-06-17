@@ -2,6 +2,7 @@
 
 namespace App\Services\Integrations;
 
+use App\Integrations\Dynamics\DynamicsAttendanceWriter;
 use App\Integrations\Dynamics\DynamicsClient;
 use App\Integrations\Dynamics\DynamicsMapper;
 use App\Models\AttendanceSession;
@@ -15,6 +16,7 @@ class DynamicsSyncService
     public function __construct(
         private readonly DynamicsClient $client,
         private readonly DynamicsMapper $mapper,
+        private readonly DynamicsAttendanceWriter $attendanceWriter,
         private readonly NotificationService $notificationService,
     ) {
     }
@@ -46,13 +48,20 @@ class DynamicsSyncService
 
         try {
             $payload = $this->mapper->mapAttendanceSession($session);
-            $response = $this->client->pushAttendance($payload);
+
+            if (config('dynamics.attendance_push_mode', 'dataverse') === 'dataverse') {
+                $response = $this->attendanceWriter->push($session);
+                $externalReference = $response['attendance_id'] ?? $response['id'] ?? null;
+            } else {
+                $response = $this->client->pushAttendance($payload);
+                $externalReference = $response['id'] ?? null;
+            }
 
             $sync->forceFill([
                 'status' => 'synced',
                 'payload' => $payload,
                 'response' => $response,
-                'external_reference' => $response['id'] ?? $sync->external_reference,
+                'external_reference' => $externalReference ?? $sync->external_reference,
                 'synced_at' => now(),
                 'error_message' => null,
             ])->save();

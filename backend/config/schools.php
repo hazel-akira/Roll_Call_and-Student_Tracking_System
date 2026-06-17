@@ -48,4 +48,17 @@ return [
         'PGJA' => 'Pioneer Girls Junior Academy',
         'SPTA' => 'St. Paul Thomas Academy',
     ],
+
+    /*
+     * Allowed student email domains per school code (lowercase).
+     * Students with a different domain are excluded when loading from Dataverse.
+     * Records without an email are kept.
+     */
+    'email_domains' => [
+        'PS' => ['pioneerschools.ac.ke'],
+        'PGS' => ['pioneergirlsschool.co.ke'],
+        'PJA' => ['pioneerjunioracademy.co.ke'],
+        'PGJA' => ['pioneergirlsjunioracademy.ac.ke'],
+        'SPTA' => ['stpaulthomasacademy.co.ke'],
+    ],
 ];

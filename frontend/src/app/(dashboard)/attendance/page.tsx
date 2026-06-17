@@ -87,6 +87,10 @@ export default function AttendancePage() {
       },
       options?: { force?: boolean },
     ) => {
+      if (!schoolId) {
+        return;
+      }
+
       const fetchKey = buildStudentFetchKey(params);
       if (!options?.force) {
         if (
@@ -107,7 +111,16 @@ export default function AttendancePage() {
         });
         setStudents(result.students);
         setDynamicsError(result.error);
-        studentFetchCompletedRef.current = fetchKey;
+
+        const isRetryableError =
+          result.error !== null &&
+          (result.error.includes("Select a school") ||
+            result.error.includes("unavailable") ||
+            result.error.includes("Cannot reach the API"));
+
+        if (!isRetryableError) {
+          studentFetchCompletedRef.current = fetchKey;
+        }
 
         const resolvedLocalClassId = result.meta?.local_class_id;
         if (resolvedLocalClassId && resolvedLocalClassId > 0) {
@@ -117,6 +130,8 @@ export default function AttendancePage() {
               : current,
           );
         }
+
+        return result;
       } finally {
         if (studentFetchInFlightRef.current === fetchKey) {
           studentFetchInFlightRef.current = null;
@@ -198,19 +213,22 @@ export default function AttendancePage() {
     void loadReferenceData();
   }, [authLoading, loadReferenceData, revision, user]);
 
+  useEffect(() => {
+    studentFetchCompletedRef.current = null;
+    sessionStudentsLoadedForRef.current = null;
+  }, [revision, schoolId]);
+
   const formGradeLevel = formStreamSelection?.gradeLevel ?? "";
   const formStream = formStreamSelection?.stream ?? "";
   const formClassId = formStreamSelection?.classId ?? 0;
   const formRoomId = formStreamSelection?.roomId ?? null;
 
   useEffect(() => {
-    if (selectedSessionId) {
-      return;
-    }
-
-    if (!formGradeLevel || !formStream) {
-      setStudents([]);
-      studentFetchCompletedRef.current = null;
+    if (!schoolId || !formGradeLevel || !formStream) {
+      if (!formGradeLevel || !formStream) {
+        setStudents([]);
+        studentFetchCompletedRef.current = null;
+      }
       return;
     }
 
@@ -220,14 +238,7 @@ export default function AttendancePage() {
       stream: formStream,
       roomId: formRoomId,
     });
-  }, [
-    fetchStudents,
-    formClassId,
-    formGradeLevel,
-    formRoomId,
-    formStream,
-    selectedSessionId,
-  ]);
+  }, [fetchStudents, formClassId, formGradeLevel, formRoomId, formStream, schoolId]);
 
   const applySessionUpdate = useCallback(
     (updated: AttendanceSession, options?: { pin?: boolean }) => {
@@ -263,22 +274,32 @@ export default function AttendancePage() {
       return;
     }
 
-    const loadKey = `${selectedSessionId}|${sessionClass.id}`;
+    const roomId = formStreamSelection?.roomId ?? formRoomId;
+    const loadKey = [
+      selectedSessionId,
+      sessionClass.id,
+      sessionClass.section ?? "",
+      roomId ?? "",
+    ].join("|");
+
     if (sessionStudentsLoadedForRef.current === loadKey) {
       return;
     }
 
-    sessionStudentsLoadedForRef.current = loadKey;
     void fetchStudents(
       {
         classId: sessionClass.id,
         gradeLevel: sessionClass.grade_level ?? sessionClass.name ?? "",
-        stream: sessionClass.section ?? "",
-        roomId: formRoomId,
+        stream: sessionClass.section ?? formStreamSelection?.stream ?? "",
+        roomId,
       },
       { force: true },
-    );
-  }, [fetchStudents, formRoomId, selectedSession, selectedSessionId]);
+    ).then((result) => {
+      if (result && (result.students.length > 0 || !result.error)) {
+        sessionStudentsLoadedForRef.current = loadKey;
+      }
+    });
+  }, [fetchStudents, formRoomId, formStreamSelection, selectedSession, selectedSessionId]);
 
   const refreshSession = useCallback(
     async (sessionId: number) => {
@@ -344,6 +365,18 @@ export default function AttendancePage() {
         setCreateSuccess(`Session "${created.title}" created. Mark attendance on the right.`);
         studentFetchCompletedRef.current = null;
 
+        if (formStreamSelection && schoolId) {
+          void fetchStudents(
+            {
+              classId: created.class?.id ?? formStreamSelection.classId,
+              gradeLevel: formStreamSelection.gradeLevel,
+              stream: formStreamSelection.stream,
+              roomId: formStreamSelection.roomId,
+            },
+            { force: true },
+          );
+        }
+
         try {
           await refreshSession(created.id);
         } catch {
@@ -368,7 +401,7 @@ export default function AttendancePage() {
         }
       }
     },
-    [applySessionUpdate, formStreamSelection, refreshSession],
+    [applySessionUpdate, formStreamSelection, refreshSession, schoolId, fetchStudents],
   );
 
   async function syncSelectedClassStudents() {

@@ -81,4 +81,42 @@ return [
      * Example: 'grade 4' => 284210004
      */
     'grade_level_option_map' => [],
+
+    /*
+     * Push closed roll-call sessions into Dataverse attendance tables.
+     */
+    'attendance_push_mode' => env('DYNAMICS_ATTENDANCE_PUSH_MODE', 'dataverse'),
+    'attendance' => [
+        'header_entity' => env('DYNAMICS_ATTENDANCE_ENTITY', 'ses_attendances'),
+        'header_logical' => env('DYNAMICS_ATTENDANCE_LOGICAL', 'ses_attendance'),
+        'header_id_column' => env('DYNAMICS_ATTENDANCE_ID_COLUMN', 'ses_attendanceid'),
+        'header_name_column' => env('DYNAMICS_ATTENDANCE_NAME_COLUMN', 'ses_attendance'),
+        'header_date_column' => env('DYNAMICS_ATTENDANCE_DATE_COLUMN', 'ses_date'),
+        'roll_entity' => env('DYNAMICS_ATTENDANCE_ROLL_ENTITY', 'ses_attendancerolls'),
+        'roll_logical' => env('DYNAMICS_ATTENDANCE_ROLL_LOGICAL', 'ses_attendanceroll'),
+        'roll_id_column' => env('DYNAMICS_ATTENDANCE_ROLL_ID_COLUMN', 'ses_attendancerollid'),
+        'roll_name_column' => env('DYNAMICS_ATTENDANCE_ROLL_NAME_COLUMN', 'ses_attendanceroll'),
+        'roll_present_column' => env('DYNAMICS_ATTENDANCE_ROLL_PRESENT_COLUMN', 'ses_present'),
+        'roll_remarks_column' => env('DYNAMICS_ATTENDANCE_ROLL_REMARKS_COLUMN', 'ses_remarks'),
+        'class_entity' => env('DYNAMICS_CLASS_ENTITY', 'ses_classes'),
+        'class_lookup' => env('DYNAMICS_ATTENDANCE_CLASS_LOOKUP', 'ses_classid'),
+        'class_name_column' => env('DYNAMICS_ATTENDANCE_CLASS_NAME_COLUMN', 'ses_classname'),
+        'school_entity' => env('DYNAMICS_ATTENDANCE_SCHOOL_ENTITY', 'ses_schools'),
+        'school_lookup' => env('DYNAMICS_ATTENDANCE_SCHOOL_LOOKUP', 'ses_schoolid'),
+        'student_lookup' => env('DYNAMICS_ATTENDANCE_STUDENT_LOOKUP', 'ses_studentid'),
+        'attendance_parent_lookup' => env('DYNAMICS_ATTENDANCE_ROLL_PARENT_LOOKUP', 'ses_attendanceid'),
+        'code_prefix' => env('DYNAMICS_ATTENDANCE_CODE_PREFIX', 'ATD-'),
+        'code_pad' => (int) env('DYNAMICS_ATTENDANCE_CODE_PAD', 8),
+        'roll_code_prefix' => env('DYNAMICS_ATTENDANCE_ROLL_CODE_PREFIX', 'ATR-'),
+        'roll_code_pad' => (int) env('DYNAMICS_ATTENDANCE_ROLL_CODE_PAD', 8),
+        'roll_attendance_status_column' => env('DYNAMICS_ATTENDANCE_ROLL_ATTENDANCE_STATUS_COLUMN', 'ses_attendancestatus'),
+        'roll_line_status_column' => env('DYNAMICS_ATTENDANCE_ROLL_LINE_STATUS_COLUMN', 'ses_attendancerollstatus'),
+        'status_option_present' => (int) env('DYNAMICS_ATTENDANCE_STATUS_PRESENT', 284210000),
+        'status_option_absent' => env('DYNAMICS_ATTENDANCE_STATUS_ABSENT'),
+        'lms_id_column' => env('DYNAMICS_ATTENDANCE_LMS_ID_COLUMN', 'ses_lmsid'),
+        'academic_year_column' => env('DYNAMICS_ATTENDANCE_ACADEMIC_YEAR_COLUMN', 'ses_academicyear'),
+        'faculty_name_column' => env('DYNAMICS_ATTENDANCE_FACULTY_NAME_COLUMN', 'ses_facultyname'),
+        'student_name_column' => env('DYNAMICS_ATTENDANCE_STUDENT_NAME_COLUMN', 'ses_studentname'),
+        'institution_student_id_column' => env('DYNAMICS_ATTENDANCE_INSTITUTION_STUDENT_ID_COLUMN', 'ses_institutionstudentid'),
+    ],
 ];

@@ -120,6 +120,50 @@ erDiagram
    - `ses_students` where `_cr0dc_classstream_value eq {roomId}`
    - Fallback: same school + `ses_gradelevel` matching grade parsed from room name (e.g. “Grade Seven S” → Grade 7), which returns **all** streams in that grade if Class Stream is empty.
 
+## Attendance export (Roll Call → Dataverse)
+
+When a teacher **closes** an attendance session, the backend queues a Dynamics sync job.
+
+Default mode (`DYNAMICS_ATTENDANCE_PUSH_MODE=dataverse`) writes directly to:
+
+| Dataverse table | Entity set | Role |
+|-----------------|------------|------|
+| **Attendance** | `ses_attendances` | One header per closed session (`ses_attendance`, `ses_date`, school/class links) |
+| **Attendance Roll** | `ses_attendancerolls` | One row per student mark (`ses_present`, `ses_remarks`, links to attendance + student) |
+
+### Field mapping (PIU `ses_attendances` / `ses_attendancerolls`)
+
+| Roll Call | `ses_attendances` field | Notes |
+|-----------|-------------------------|-------|
+| Session id | `ses_attendance` | Code like `ATD-00000001` (prefix + padded local session id) |
+| Session title + id | `ses_lmsid` | `RC-SESSION:{id}\|{title}` traceability |
+| Session date | `ses_date` | `YYYY-MM-DD` |
+| Class / stream | `ses_classname` | e.g. `Grade 9 Grade Nine East` |
+| Academic year | `ses_academicyear` | From class or session year |
+| Teacher | `ses_facultyname` | Teacher display name |
+| School | `ses_schoolid` | Lookup → `ses_schools` |
+| Class | `ses_classid` | Lookup → `ses_classes` (when resolvable) |
+
+| Roll Call | `ses_attendancerolls` field | Notes |
+|-----------|----------------------------|-------|
+| Roll line code | `ses_attendanceroll` | `ATR-00001000` style (`ATR-` + padded local attendance record id) |
+| Parent session | `ses_attendanceid` | Lookup → `ses_attendances` |
+| Student | `ses_studentid` | Lookup → `ses_students` |
+| Student name | `ses_studentname` | Uppercase full name |
+| Institution id | `ses_institutionstudentid` | Numeric admission id (e.g. `1565`) |
+| Present / absent | `ses_present` | `true` = present |
+| Status picklists | `ses_attendancestatus`, `ses_attendancerollstatus` | `284210000` for present (configurable) |
+| Remark | `ses_remarks` | When provided |
+| Absent timestamp | `ses_missedattendance` | Set when status is not present |
+
+Legacy summary:
+
+Students must have `external_reference` set (Dynamics `ses_studentid`) before sync. Students loaded from Dataverse during roll call satisfy this automatically.
+
+Set `DYNAMICS_ATTENDANCE_PUSH_MODE=endpoint` to use the legacy custom HTTP endpoint (`DYNAMICS_ATTENDANCE_ENDPOINT`) instead.
+
+The app service account needs **create** permission on `ses_attendance` and `ses_attendanceroll` in Dataverse.
+
 ## Fixing empty rosters
 
 In Dataverse, on each `ses_student` record set **Class Stream** (`cr0dc_classstream`) to the correct `ses_room` (e.g. “Grade Seven S”). Until that lookup is set, the app cannot distinguish “S” vs “N” vs “East” within the same grade.

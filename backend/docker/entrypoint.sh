@@ -49,31 +49,78 @@ wait_for_database() {
 
   echo "ERROR: Database not reachable after ${max_attempts} attempts."
   echo "Check DB_HOST, DB_DATABASE, DB_USERNAME, and DB_PASSWORD match the mysql service."
-  exit 1
+  return 1
+}
+
+wait_for_bootstrap() {
+  if [ -f storage/.bootstrap-complete ]; then
+    return 0
+  fi
+
+  echo "Waiting for backend bootstrap to finish..."
+  attempts=0
+  max_attempts=120
+
+  while [ "$attempts" -lt "$max_attempts" ]; do
+    if [ -f storage/.bootstrap-failed ]; then
+      echo "ERROR: Backend bootstrap failed."
+      return 1
+    fi
+
+    if [ -f storage/.bootstrap-complete ]; then
+      echo "Backend bootstrap is complete."
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+    sleep 2
+  done
+
+  echo "ERROR: Timed out waiting for backend bootstrap."
+  return 1
+}
+
+bootstrap_app() {
+  rm -f storage/.bootstrap-complete storage/.bootstrap-failed
+
+  echo "Clearing cached bootstrap files..."
+  php artisan config:clear
+  php artisan route:clear 2>/dev/null || true
+  php artisan view:clear 2>/dev/null || true
+
+  wait_for_database
+
+  php artisan storage:link --force 2>/dev/null || true
+
+  echo "Running database migrations..."
+  php artisan migrate --force
+
+  echo "Optimizing for production..."
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
+
+  echo "Backend setup complete."
+  touch storage/.bootstrap-complete
+}
+
+run_bootstrap() {
+  if ! bootstrap_app; then
+    echo "ERROR: Backend bootstrap failed."
+    touch storage/.bootstrap-failed
+    return 1
+  fi
 }
 
 prepare_storage
 
-echo "Clearing cached bootstrap files..."
-php artisan config:clear
-php artisan route:clear 2>/dev/null || true
-php artisan view:clear 2>/dev/null || true
-
-wait_for_database
-
-php artisan storage:link --force 2>/dev/null || true
-
-echo "Running database migrations..."
-if ! php artisan migrate --force; then
-  echo "ERROR: Database migration failed."
-  exit 1
+if [ "${ARTISAN_BOOTSTRAP:-1}" = "0" ]; then
+  echo "Worker mode: waiting for backend bootstrap..."
+  wait_for_bootstrap
+  wait_for_database
+  exec "$@"
 fi
 
-echo "Optimizing for production..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-echo "Backend setup complete."
-touch /tmp/app-ready
+echo "Starting bootstrap in background..."
+run_bootstrap &
 exec "$@"

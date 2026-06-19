@@ -133,7 +133,7 @@ If you change `DB_PASSWORD` after the first deploy, the existing MySQL volume ke
 
 ### Backend unhealthy on deploy
 
-The backend entrypoint runs migrations before nginx starts. First deploy can take 30–90 seconds. The compose health check allows a **120s** start period.
+The backend entrypoint runs migrations in the background while nginx starts. First deploy can take 30–90 seconds before `/up` returns 200. The compose health check allows a **180s** start period and treats bootstrap as healthy until migrations finish.
 
 If deploy still fails:
 

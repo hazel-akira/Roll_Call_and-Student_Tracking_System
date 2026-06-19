@@ -43,7 +43,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh \
 
 EXPOSE 80
 
-HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=12 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=12 \
   CMD /usr/local/bin/healthcheck.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

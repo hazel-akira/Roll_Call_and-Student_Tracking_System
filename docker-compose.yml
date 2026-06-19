@@ -59,8 +59,8 @@ services:
       DYNAMICS_SCOPE: ${DYNAMICS_SCOPE:-}
     volumes:
       - backend_storage:/var/www/html/storage
-    ports:
-      - "${BACKEND_PORT:-8000}:80"
+    expose:
+      - "80"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/up"]
       interval: 30s
@@ -123,8 +123,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+    expose:
+      - "3000"
 
 volumes:
   mysql_data:

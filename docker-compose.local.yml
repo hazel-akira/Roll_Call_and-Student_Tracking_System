@@ -1,0 +1,10 @@
+# Local development port mappings (not used by Coolify).
+# Run: docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+
+services:
+  backend:
+    ports:
+      - "${BACKEND_PORT:-8000}:80"
+  frontend:
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"

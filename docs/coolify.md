@@ -110,7 +110,8 @@ https://app.yourdomain.com/callback
 1. **New Resource → Docker Compose**
 2. Point at this repo; Coolify uses root `docker-compose.yml`
 3. Copy `.env.docker.example` to `.env` on the server and fill in secrets
-4. Map domains:
+4. **Do not set `BACKEND_PORT` / `FRONTEND_PORT`** — Coolify routes via its proxy to container ports internally (backend **80**, frontend **3000**).
+5. Map domains in Coolify:
    - `backend` → `api.yourdomain.com` (port 80)
    - `frontend` → `app.yourdomain.com` (port 3000)
 
@@ -119,7 +120,7 @@ https://app.yourdomain.com/callback
 ```bash
 cp .env.docker.example .env
 # Edit .env with your values
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
 
 API: http://localhost:8000/up  

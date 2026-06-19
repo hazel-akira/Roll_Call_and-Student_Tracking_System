@@ -1,0 +1,131 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-roll_call}
+      MYSQL_USER: ${DB_USERNAME:-roll_call}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-Roll Call API}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?Set APP_KEY}
+      APP_URL: ${APP_URL:?Set APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-roll_call}
+      DB_USERNAME: ${DB_USERNAME:-roll_call}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      JWT_ISSUER: ${APP_URL}
+      JWT_TTL: ${JWT_TTL:-3600}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-1209600}
+      AUTH_AUTO_ACTIVATE_SSO_USERS: ${AUTH_AUTO_ACTIVATE_SSO_USERS:-false}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_ALLOWED_TENANT_IDS: ${MICROSOFT_ALLOWED_TENANT_IDS:-}
+      MICROSOFT_ALLOWED_DOMAINS: ${MICROSOFT_ALLOWED_DOMAINS:-}
+      MICROSOFT_JWKS_URL: ${MICROSOFT_JWKS_URL:-}
+      MICROSOFT_ISSUER_PREFIX: ${MICROSOFT_ISSUER_PREFIX:-https://login.microsoftonline.com}
+      DYNAMICS_ENABLED: ${DYNAMICS_ENABLED:-false}
+      DYNAMICS_BASE_URL: ${DYNAMICS_BASE_URL:-}
+      DYNAMICS_TENANT_ID: ${DYNAMICS_TENANT_ID:-}
+      DYNAMICS_CLIENT_ID: ${DYNAMICS_CLIENT_ID:-}
+      DYNAMICS_CLIENT_SECRET: ${DYNAMICS_CLIENT_SECRET:-}
+      DYNAMICS_SCOPE: ${DYNAMICS_SCOPE:-}
+    volumes:
+      - backend_storage:/var/www/html/storage
+    ports:
+      - "${BACKEND_PORT:-8000}:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-Roll Call API}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-roll_call}
+      DB_USERNAME: ${DB_USERNAME:-roll_call}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${APP_URL}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_ALLOWED_TENANT_IDS: ${MICROSOFT_ALLOWED_TENANT_IDS:-}
+      MICROSOFT_JWKS_URL: ${MICROSOFT_JWKS_URL:-}
+      DYNAMICS_ENABLED: ${DYNAMICS_ENABLED:-false}
+      DYNAMICS_BASE_URL: ${DYNAMICS_BASE_URL:-}
+      DYNAMICS_TENANT_ID: ${DYNAMICS_TENANT_ID:-}
+      DYNAMICS_CLIENT_ID: ${DYNAMICS_CLIENT_ID:-}
+      DYNAMICS_CLIENT_SECRET: ${DYNAMICS_CLIENT_SECRET:-}
+      DYNAMICS_SCOPE: ${DYNAMICS_SCOPE:-}
+    volumes:
+      - backend_storage:/var/www/html/storage
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MICROSOFT_CLIENT_ID: ${NEXT_PUBLIC_MICROSOFT_CLIENT_ID:-}
+        NEXT_PUBLIC_MICROSOFT_TENANT_ID: ${NEXT_PUBLIC_MICROSOFT_TENANT_ID:-}
+        NEXT_PUBLIC_MICROSOFT_AUTHORITY: ${NEXT_PUBLIC_MICROSOFT_AUTHORITY:-}
+        NEXT_PUBLIC_MICROSOFT_REDIRECT_URI: ${NEXT_PUBLIC_MICROSOFT_REDIRECT_URI:?Set NEXT_PUBLIC_MICROSOFT_REDIRECT_URI}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  mysql_data:
+  backend_storage:

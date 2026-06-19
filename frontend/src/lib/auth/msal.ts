@@ -7,6 +7,32 @@ const loginRequest = {
 
 let instancePromise: Promise<PublicClientApplication> | null = null;
 
+function assertSecureBrowserContext(): void {
+  if (typeof window === "undefined") {
+    throw new Error("Microsoft sign-in is only available in the browser.");
+  }
+
+  if (!window.isSecureContext) {
+    throw new Error(
+      "Microsoft sign-in requires HTTPS or localhost. During development, open http://localhost:3000 instead of your LAN IP (for example http://192.168.x.x:3000).",
+    );
+  }
+
+  if (!window.crypto?.subtle) {
+    throw new Error(
+      "This browser does not expose Web Crypto, which Microsoft sign-in requires. Try a modern browser or use localhost/HTTPS.",
+    );
+  }
+}
+
+function getRedirectUri() {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/callback`;
+  }
+
+  return process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI ?? "http://localhost:3000/callback";
+}
+
 function getBaseUrl() {
   if (typeof window !== "undefined") {
     return window.location.origin;
@@ -30,13 +56,15 @@ function getAuthority() {
 }
 
 function createMsalInstance() {
+  assertSecureBrowserContext();
+
   return new PublicClientApplication({
     auth: {
       clientId: process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID ?? "",
       authority: getAuthority(),
-      redirectUri:
-        process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI ?? `${getBaseUrl()}/callback`,
+      redirectUri: getRedirectUri(),
       postLogoutRedirectUri: `${getBaseUrl()}/login`,
+      navigateToLoginRequestUrl: false,
     },
     cache: {
       cacheLocation: "sessionStorage",
@@ -47,13 +75,31 @@ function createMsalInstance() {
 export async function getMsalInstance() {
   if (!instancePromise) {
     const instance = createMsalInstance();
-    instancePromise = instance.initialize().then(() => instance);
+    instancePromise = instance.initialize().then(() => instance).catch((error) => {
+      instancePromise = null;
+      throw error;
+    });
   }
 
   return instancePromise;
 }
 
+export async function clearMicrosoftAuthCache() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  instancePromise = null;
+
+  for (const key of Object.keys(window.sessionStorage)) {
+    if (key.startsWith("msal.") || key === "roll-call-msal-nonce") {
+      window.sessionStorage.removeItem(key);
+    }
+  }
+}
+
 export async function loginWithMicrosoft() {
+  await clearMicrosoftAuthCache();
   const instance = await getMsalInstance();
   const nonce = window.crypto.randomUUID();
   window.sessionStorage.setItem("roll-call-msal-nonce", nonce);

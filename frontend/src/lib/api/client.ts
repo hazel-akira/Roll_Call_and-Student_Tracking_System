@@ -5,6 +5,7 @@ import axios, {
 } from "axios";
 import { clearSession, readSession, readTokens, writeSession } from "@/lib/auth/storage";
 import { ALL_SCHOOLS_VALUE, readSelectedSchoolId } from "@/lib/tenant/school-storage";
+import type { TokenSet } from "@/types";
 
 export const SELECTED_SCHOOL_STORAGE_KEY = "roll-call-selected-school-id";
 
@@ -40,7 +41,7 @@ async function refreshAccessToken(): Promise<string> {
     throw new Error("No refresh token available.");
   }
 
-  const response = await axios.post<{ tokens: { access_token: string; refresh_token: string } }>(
+  const response = await axios.post<{ tokens: TokenSet }>(
     `${baseURL}/auth/refresh`,
     { refresh_token: session.tokens.refresh_token },
     {

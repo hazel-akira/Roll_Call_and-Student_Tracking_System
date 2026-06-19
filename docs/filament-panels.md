@@ -9,7 +9,44 @@ The Laravel backend includes two [Filament](https://filamentphp.com) panels for 
 | **Admin** | `/admin` | Users with role `admin` or `ict_staff` |
 | **Teacher** | `/teacher` | Users with role `teacher`, `admin`, or `ict_staff` |
 
-Users must be `active` and have a **password** set to use panel login (Microsoft SSO users created without a password need one assigned in the admin panel).
+Users must be `active` and allowed for the panel role. They can sign in with **Microsoft SSO** (when `MICROSOFT_SSO_ENABLED=true`) or with **email and password** if a panel password has been set in the admin **Users** screen.
+
+## Microsoft SSO
+
+Microsoft sign-in is available in two places:
+
+| Surface | How it works |
+|---------|----------------|
+| **Next.js app** | Browser MSAL login → `POST /api/v1/auth/microsoft/exchange` |
+| **Filament `/admin` and `/teacher`** | “Continue with Microsoft” on the login page → OAuth callback at `/auth/microsoft/callback` |
+
+### Backend environment
+
+```env
+MICROSOFT_SSO_ENABLED=true
+MICROSOFT_CLIENT_ID=<entra-app-id>
+MICROSOFT_CLIENT_SECRET=<entra-client-secret>
+MICROSOFT_ALLOWED_TENANT_IDS=<azure-tenant-id>
+MICROSOFT_JWKS_URL=https://login.microsoftonline.com/<tenant-id>/discovery/v2.0/keys
+MICROSOFT_REDIRECT_URI=http://127.0.0.1:8000/auth/microsoft/callback
+```
+
+`MICROSOFT_REDIRECT_URI` defaults to `{APP_URL}/auth/microsoft/callback` when omitted.
+
+### Entra app registration
+
+Use the **same app registration**, but register redirect URIs on the **correct platform**. A URI can only belong to one platform type.
+
+| Platform | URI | Used by |
+|----------|-----|---------|
+| **Single-page application** | `http://localhost:3000/callback` | Next.js (`npm run dev`) |
+| **Web** | `http://localhost:8000/auth/microsoft/callback` | Filament `/admin` and `/teacher` |
+
+**Important:** Do **not** put `http://localhost:3000/callback` under **Web**. If you do, the Next.js app fails with `AADSTS9002326` (cross-origin token redemption only allowed for SPA).
+
+For production, use your HTTPS domains on the same platform types.
+
+New Microsoft users are created as **pending** when `AUTH_AUTO_ACTIVATE_SSO_USERS=false`. They cannot get a JWT or use Filament until an admin grants access and (for teachers) assigns at least one school.
 
 ## Admin panel
 

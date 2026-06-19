@@ -74,6 +74,20 @@ class UserAccessService
         };
     }
 
+    public function panelAccessDeniedMessage(User $user, string $panelId): string
+    {
+        $role = $user->role?->slug ?? 'unknown';
+
+        return match ($panelId) {
+            'admin' => match ($role) {
+                'teacher' => 'Your account is a teacher. Use the teacher panel at /teacher to sign in.',
+                default => 'Your account does not have administrator access. Ask an ICT administrator to assign the admin or ICT staff role.',
+            },
+            'teacher' => 'Your account is not set up for the teacher panel. Ask an administrator to assign the teacher role and school access.',
+            default => 'Your account does not have access to this panel.',
+        };
+    }
+
     /**
      * @return array<int, string>
      */

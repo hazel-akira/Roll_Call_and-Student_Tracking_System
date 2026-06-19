@@ -1,5 +1,7 @@
 # Deployment Guide
 
+For Docker and Coolify deployment, see [coolify.md](./coolify.md).
+
 ## Recommended Topology
 
 ### Backend

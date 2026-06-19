@@ -23,7 +23,11 @@ return [
     ],
 
     'microsoft' => [
+        'enabled' => filter_var(env('MICROSOFT_SSO_ENABLED', true), FILTER_VALIDATE_BOOL),
         'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'tenant_id' => env('MICROSOFT_TENANT_ID'),
+        'redirect_uri' => env('MICROSOFT_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/microsoft/callback'),
         'tenant_allow_list' => array_values(array_filter(array_map('trim', explode(',', (string) env('MICROSOFT_ALLOWED_TENANT_IDS', ''))))),
         'domain_allow_list' => array_values(array_filter(array_map('trim', explode(',', (string) env('MICROSOFT_ALLOWED_DOMAINS', ''))))),
         'jwks_url' => env('MICROSOFT_JWKS_URL', 'https://login.microsoftonline.com/common/discovery/v2.0/keys'),

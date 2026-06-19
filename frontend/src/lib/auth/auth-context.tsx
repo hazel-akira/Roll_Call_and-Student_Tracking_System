@@ -14,6 +14,7 @@ import { apiClient } from "@/lib/api/client";
 import { clearSession, readSession, writeSession } from "@/lib/auth/storage";
 import { clearSelectedSchoolId } from "@/lib/tenant/school-storage";
 import {
+  clearMicrosoftAuthCache,
   consumeStoredNonce,
   handleMicrosoftRedirect,
   loginWithMicrosoft,
@@ -35,8 +36,19 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function getAuthErrorMessage(error: unknown): string {
+  const rawMessage =
+    error instanceof Error ? error.message : "Unable to initialize authentication.";
+
+  if (rawMessage.includes("AADSTS9002326")) {
+    return "Microsoft sign-in is misconfigured in Entra or your browser has a stale login attempt. In Entra, keep http://localhost:3000/callback only under Single-page application (not Web), remove http://localhost/callback if unused, save, then clear site data for localhost:3000 and try again in a private window.";
+  }
+
+  if (rawMessage.includes("crypto_nonexistent") || rawMessage.includes("secure context")) {
+    return rawMessage;
+  }
+
   if (!isAxiosError(error)) {
-    return error instanceof Error ? error.message : "Unable to initialize authentication.";
+    return rawMessage;
   }
 
   const data = error.response?.data as
@@ -169,6 +181,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (bootstrapError) {
         resetSession();
+
+        if (
+          bootstrapError instanceof Error &&
+          (bootstrapError.message.includes("AADSTS9002326") ||
+            bootstrapError.message.includes("invalid_request"))
+        ) {
+          await clearMicrosoftAuthCache();
+        }
+
         setError(getAuthErrorMessage(bootstrapError));
       } finally {
         if (!cancelled) {
@@ -186,7 +207,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async () => {
     setError(null);
-    await loginWithMicrosoft();
+
+    try {
+      await loginWithMicrosoft();
+    } catch (loginError) {
+      setError(getAuthErrorMessage(loginError));
+    }
   }, []);
 
   const logout = useCallback(async () => {

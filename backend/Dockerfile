@@ -22,9 +22,12 @@ RUN composer dump-autoload --optimize --no-dev \
 
 FROM node:20-bookworm-slim AS assets
 WORKDIR /app
-COPY package.json ./
-RUN npm install --ignore-scripts
-COPY vite.config.js resources ./
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY vite.config.js ./
+COPY resources ./resources
+COPY --from=base /var/www/html/vendor ./vendor
+RUN mkdir -p storage/framework/views
 RUN npm run build
 
 FROM base AS final

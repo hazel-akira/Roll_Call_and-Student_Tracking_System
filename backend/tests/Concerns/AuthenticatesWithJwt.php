@@ -28,7 +28,9 @@ trait AuthenticatesWithJwt
 
     protected function accessTokenFor(User $user): string
     {
-        config()->set('jwt.secret', config('jwt.secret') ?: 'testing-secret');
+        if (! config('jwt.secret')) {
+            config()->set('jwt.secret', config('app.key'));
+        }
 
         return app(JwtIssuer::class)->createTokenPair($user)['access_token'];
     }

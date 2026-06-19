@@ -115,6 +115,47 @@ https://app.yourdomain.com/callback
    - `backend` → `api.yourdomain.com` (port 80)
    - `frontend` → `app.yourdomain.com` (port 3000)
 
+### Compose env checklist
+
+Set these in Coolify (Compose environment / `.env` on the server):
+
+| Variable | Notes |
+|----------|-------|
+| `APP_KEY` | `php artisan key:generate --show` — must start with `base64:` |
+| `APP_URL` | Public API URL, e.g. `https://api.yourdomain.com` |
+| `FRONTEND_URL` | Public app URL, e.g. `https://app.yourdomain.com` |
+| `DB_PASSWORD` | Must match for both `mysql` and `backend` services |
+| `DB_ROOT_PASSWORD` | MySQL root password |
+| `JWT_SECRET` | Random secret string |
+| `NEXT_PUBLIC_*` | Required frontend build args (see `.env.docker.example`) |
+
+If you change `DB_PASSWORD` after the first deploy, the existing MySQL volume keeps the old password. Either restore the original password or delete the `mysql_data` volume and redeploy (this wipes the database).
+
+### Backend unhealthy on deploy
+
+The backend entrypoint runs migrations before nginx starts. First deploy can take 30–90 seconds. The compose health check allows a **120s** start period.
+
+If deploy still fails:
+
+1. Open the **backend container logs** in Coolify (or `docker logs <backend-container>` on the server).
+2. Look for `ERROR:` lines from the entrypoint — common causes:
+   - `APP_KEY is not set`
+   - `Database not reachable` — wrong `DB_PASSWORD` or MySQL volume out of sync
+   - `Database migration failed` — inspect the SQL error above it
+3. Confirm `DB_PASSWORD` is identical for the mysql and backend services (compose uses the same variable for both).
+4. Redeploy after fixing env vars; no need to change compose port mappings.
+
+### Microsoft login: "no such table: cache" (sqlite)
+
+If sign-in shows an error mentioning `Connection: sqlite` and `database/database.sqlite`, the API is **not using MySQL** and migrations have not created the `cache` table.
+
+Fix:
+
+1. In Coolify env, set `DB_CONNECTION=mysql` (and `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` for standalone backend apps).
+2. For Docker Compose, confirm the backend service is healthy — its entrypoint runs `php artisan migrate --force` on start.
+3. Open the backend terminal and run: `php artisan config:clear && php artisan migrate --force && php artisan config:cache`
+4. Redeploy the backend so cached config is rebuilt with MySQL settings (Laravel ignores `.env` changes while `bootstrap/cache/config.php` exists).
+
 ## Local Docker test
 
 ```bash

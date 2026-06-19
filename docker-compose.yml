@@ -62,11 +62,12 @@ services:
     expose:
       - "80"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1/up"]
-      interval: 30s
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 90s
+      retries: 12
+      start_period: 120s
+      start_interval: 10s
 
   queue:
     build:

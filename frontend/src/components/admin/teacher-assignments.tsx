@@ -94,8 +94,54 @@ export function TeacherAssignments() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [teacherResponse, schoolResponse, classResponse] = await Promise.all([
+          apiClient.get<{ data: TeacherRow[] }>("/teachers"),
+          apiClient.get<{ data: School[] }>("/schools"),
+          apiClient.get<{ data: SchoolClass[] }>("/classes"),
+        ]);
+
+        const teacherRows = Array.isArray(teacherResponse.data?.data)
+          ? teacherResponse.data.data
+          : [];
+        const schoolRows = Array.isArray(schoolResponse.data?.data)
+          ? schoolResponse.data.data
+          : [];
+        const classRows = Array.isArray(classResponse.data?.data)
+          ? classResponse.data.data
+          : [];
+
+        setTeachers(teacherRows);
+        setSchools(schoolRows);
+        setClasses(classRows);
+        setDraft(
+          Object.fromEntries(
+            teacherRows.map((teacher) => [
+              teacher.id,
+              {
+                schoolIds: (teacher.schools ?? []).map((school) => school.id),
+                classIds: (teacher.class_assignments ?? []).map(
+                  (row) => row.class_id ?? row.class?.id ?? 0,
+                ).filter((id) => id > 0),
+              },
+            ]),
+          ),
+        );
+        setMessage(null);
+      } catch {
+        setTeachers([]);
+        setSchools([]);
+        setClasses([]);
+        setMessage("Unable to load teachers, schools, or classes.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadData();
+  }, []);
 
   async function saveTeacher(teacherId: number) {
     const entry = draft[teacherId];

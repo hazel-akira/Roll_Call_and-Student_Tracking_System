@@ -38,7 +38,7 @@ export default function AttendancePage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const pinnedSessionRef = useRef<AttendanceSession | null>(null);
+  const [pinnedSession, setPinnedSession] = useState<AttendanceSession | null>(null);
   const studentFetchInFlightRef = useRef<string | null>(null);
   const studentFetchCompletedRef = useRef<string | null>(null);
   const sessionStudentsLoadedForRef = useRef<string | null>(null);
@@ -56,9 +56,9 @@ export default function AttendancePage() {
       return fromList;
     }
 
-    const pinned = pinnedSessionRef.current;
+    const pinned = pinnedSession;
     return pinned?.id === selectedSessionId ? pinned : null;
-  }, [selectedSessionId, sessions]);
+  }, [pinnedSession, selectedSessionId, sessions]);
 
   const buildStudentFetchKey = useCallback(
     (params: {
@@ -186,7 +186,7 @@ export default function AttendancePage() {
             merged.set(session.id, session);
           }
         }
-        const pinned = pinnedSessionRef.current;
+        const pinned = pinnedSession;
         if (pinned && !merged.has(pinned.id)) {
           merged.set(pinned.id, pinned);
         }
@@ -203,14 +203,18 @@ export default function AttendancePage() {
 
       setActionError("Unable to load classes and attendance sessions.");
     }
-  }, []);
+  }, [pinnedSession]);
 
   useEffect(() => {
     if (authLoading || !user) {
       return;
     }
 
-    void loadReferenceData();
+    const load = async () => {
+      await loadReferenceData();
+    };
+
+    void load();
   }, [authLoading, loadReferenceData, revision, user]);
 
   useEffect(() => {
@@ -224,20 +228,24 @@ export default function AttendancePage() {
   const formRoomId = formStreamSelection?.roomId ?? null;
 
   useEffect(() => {
-    if (!schoolId || !formGradeLevel || !formStream) {
-      if (!formGradeLevel || !formStream) {
-        setStudents([]);
-        studentFetchCompletedRef.current = null;
+    const load = async () => {
+      if (!schoolId || !formGradeLevel || !formStream) {
+        if (!formGradeLevel || !formStream) {
+          setStudents([]);
+          studentFetchCompletedRef.current = null;
+        }
+        return;
       }
-      return;
-    }
 
-    void fetchStudents({
-      classId: formClassId,
-      gradeLevel: formGradeLevel,
-      stream: formStream,
-      roomId: formRoomId,
-    });
+      await fetchStudents({
+        classId: formClassId,
+        gradeLevel: formGradeLevel,
+        stream: formStream,
+        roomId: formRoomId,
+      });
+    };
+
+    void load();
   }, [fetchStudents, formClassId, formGradeLevel, formRoomId, formStream, schoolId]);
 
   const applySessionUpdate = useCallback(
@@ -248,7 +256,7 @@ export default function AttendancePage() {
 
       const shouldPin = options?.pin ?? selectedSessionId === updated.id;
       if (shouldPin) {
-        pinnedSessionRef.current = updated;
+        setPinnedSession(updated);
       }
 
       setSessions((current) => {
@@ -286,19 +294,23 @@ export default function AttendancePage() {
       return;
     }
 
-    void fetchStudents(
-      {
-        classId: sessionClass.id,
-        gradeLevel: sessionClass.grade_level ?? sessionClass.name ?? "",
-        stream: sessionClass.section ?? formStreamSelection?.stream ?? "",
-        roomId,
-      },
-      { force: true },
-    ).then((result) => {
+    const load = async () => {
+      const result = await fetchStudents(
+        {
+          classId: sessionClass.id,
+          gradeLevel: sessionClass.grade_level ?? sessionClass.name ?? "",
+          stream: sessionClass.section ?? formStreamSelection?.stream ?? "",
+          roomId,
+        },
+        { force: true },
+      );
+
       if (result && (result.students.length > 0 || !result.error)) {
         sessionStudentsLoadedForRef.current = loadKey;
       }
-    });
+    };
+
+    void load();
   }, [fetchStudents, formRoomId, formStreamSelection, selectedSession, selectedSessionId]);
 
   const refreshSession = useCallback(
@@ -321,7 +333,7 @@ export default function AttendancePage() {
     setSelectedSessionId(session.id);
     setCreateSuccess(null);
     setSaveSuccess(null);
-    pinnedSessionRef.current = session;
+    setPinnedSession(session);
     sessionStudentsLoadedForRef.current = null;
     applySessionUpdate(session, { pin: true });
   }, [applySessionUpdate]);

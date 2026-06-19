@@ -157,15 +157,19 @@ export function SchoolProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!user) {
-      setSchools([]);
-      applySchoolId(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
+    const load = async () => {
+      if (!user) {
+        setSchools([]);
+        applySchoolId(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
 
-    void refreshSchools();
+      await refreshSchools();
+    };
+
+    void load();
   }, [applySchoolId, authLoading, refreshSchools, user]);
 
   const selectSchool = useCallback(

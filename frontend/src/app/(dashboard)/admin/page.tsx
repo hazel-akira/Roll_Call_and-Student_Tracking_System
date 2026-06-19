@@ -90,10 +90,10 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    setDashboardLoading(true);
     let active = true;
 
     const load = async () => {
+      setDashboardLoading(true);
       try {
         const response = await apiClient.get<AdminDashboardResponse>("/dashboard/admin");
         if (active) {

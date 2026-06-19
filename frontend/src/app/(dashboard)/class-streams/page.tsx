@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClassStreamCard } from "@/components/class-streams/class-stream-card";
 import { ClassStreamDetail } from "@/components/class-streams/class-stream-detail";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { useAuth } from "@/lib/auth/auth-context";
 import { apiClient } from "@/lib/api/client";
 import { fetchFormStreamsForSchool } from "@/lib/attendance/form-streams";
 import {
@@ -23,12 +22,10 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export default function ClassStreamsPage() {
-  const { user, loading: authLoading } = useAuth();
-  const { currentSchool, schoolId, revision } = useSchool();
+  const { currentSchool, schoolId } = useSchool();
   const searchParams = useSearchParams();
   const selectedKey = searchParams.get("key");
 
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [pages, setPages] = useState<ClassStreamPage[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -61,8 +58,6 @@ export default function ClassStreamsPage() {
         loadClasses(),
         fetchFormStreamsForSchool(schoolId),
       ]);
-
-      setClasses(localClasses);
 
       if (formStreamsResult.error || !formStreamsResult.payload) {
         setError(formStreamsResult.error ?? "Unable to load forms and streams from Dataverse.");
@@ -98,16 +93,6 @@ export default function ClassStreamsPage() {
       setProgress(null);
     }
   }, [loadClasses, schoolId]);
-
-  useEffect(() => {
-    if (authLoading || !user) {
-      return;
-    }
-
-    void loadClasses()
-      .then(setClasses)
-      .catch(() => setClasses([]));
-  }, [authLoading, loadClasses, revision, user]);
 
   if (selectedKey && selectedPage) {
     return <ClassStreamDetail page={selectedPage} />;

@@ -64,7 +64,6 @@ function createMsalInstance() {
       authority: getAuthority(),
       redirectUri: getRedirectUri(),
       postLogoutRedirectUri: `${getBaseUrl()}/login`,
-      navigateToLoginRequestUrl: false,
     },
     cache: {
       cacheLocation: "sessionStorage",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -92,50 +92,43 @@ export function AttendanceSessionForm({
     return findClassForFormStream(classes, selectedGradeLevel, streamName);
   }, [classes, selectedGradeLevel, selectedStreamOption]);
 
-  const loadFormStreams = useCallback(async () => {
-    setFormsLoading(true);
-    const result = await fetchFormStreamsForSchool(schoolId);
-    setFormStreamsPayload(result.payload);
-    setFormsError(result.error);
-    setSelectedGradeLevel("");
-    setSelectedStreamKey("");
-    setPayload((current) => ({ ...current, class_id: 0 }));
-    setFormsLoading(false);
-  }, [schoolId]);
-
-  useEffect(() => {
-    void loadFormStreams();
-  }, [loadFormStreams]);
-
-  useEffect(() => {
-    const classId = resolvedClassId && resolvedClassId > 0
+  const effectiveClassId =
+    resolvedClassId && resolvedClassId > 0
       ? resolvedClassId
       : (selectedClass?.id ?? 0);
-    setPayload((current) => ({ ...current, class_id: classId }));
 
-    if (!onFormStreamChange) {
-      return;
-    }
-
+  const formStreamSelection = useMemo((): FormStreamSelection | null => {
     if (!selectedGradeLevel || !selectedStreamOption) {
-      onFormStreamChange(null);
-      return;
+      return null;
     }
 
-    onFormStreamChange({
+    return {
       gradeLevel: selectedGradeLevel,
       stream: selectedStreamOption.stream ?? "",
       roomId: selectedStreamOption.room_id ?? null,
-      classId,
+      classId: effectiveClassId,
       class: selectedClass,
-    });
-  }, [
-    onFormStreamChange,
-    resolvedClassId,
-    selectedClass,
-    selectedGradeLevel,
-    selectedStreamOption,
-  ]);
+    };
+  }, [effectiveClassId, selectedClass, selectedGradeLevel, selectedStreamOption]);
+
+  useEffect(() => {
+    const load = async () => {
+      setFormsLoading(true);
+      const result = await fetchFormStreamsForSchool(schoolId);
+      setFormStreamsPayload(result.payload);
+      setFormsError(result.error);
+      setSelectedGradeLevel("");
+      setSelectedStreamKey("");
+      setPayload((current) => ({ ...current, class_id: 0 }));
+      setFormsLoading(false);
+    };
+
+    void load();
+  }, [schoolId]);
+
+  useEffect(() => {
+    onFormStreamChange?.(formStreamSelection);
+  }, [formStreamSelection, onFormStreamChange]);
 
   function applyGrade(gradeLevel: string) {
     setSelectedGradeLevel(gradeLevel);
@@ -302,7 +295,7 @@ export function AttendanceSessionForm({
             try {
               await onCreate({
                 ...payload,
-                class_id: payload.class_id > 0 ? payload.class_id : 0,
+                class_id: effectiveClassId > 0 ? effectiveClassId : 0,
                 grade_level: selectedGradeLevel,
                 stream: selectedStreamOption?.stream ?? "",
               });

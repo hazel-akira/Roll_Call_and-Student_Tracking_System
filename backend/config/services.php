@@ -30,7 +30,30 @@ return [
         'redirect_uri' => env('MICROSOFT_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/microsoft/callback'),
         'tenant_allow_list' => array_values(array_filter(array_map('trim', explode(',', (string) env('MICROSOFT_ALLOWED_TENANT_IDS', ''))))),
         'domain_allow_list' => array_values(array_filter(array_map('trim', explode(',', (string) env('MICROSOFT_ALLOWED_DOMAINS', ''))))),
-        'jwks_url' => env('MICROSOFT_JWKS_URL', 'https://login.microsoftonline.com/common/discovery/v2.0/keys'),
+        // Docker Compose may pass MICROSOFT_JWKS_URL="" when unset; treat empty as missing.
+        'jwks_url' => (static function (): string {
+            $configured = trim((string) env('MICROSOFT_JWKS_URL', ''));
+
+            if ($configured !== '') {
+                return $configured;
+            }
+
+            $tenantId = trim((string) env('MICROSOFT_TENANT_ID', ''));
+
+            if ($tenantId === '') {
+                $allowedTenants = array_values(array_filter(array_map(
+                    'trim',
+                    explode(',', (string) env('MICROSOFT_ALLOWED_TENANT_IDS', ''))
+                )));
+                $tenantId = $allowedTenants[0] ?? '';
+            }
+
+            if ($tenantId !== '') {
+                return "https://login.microsoftonline.com/{$tenantId}/discovery/v2.0/keys";
+            }
+
+            return 'https://login.microsoftonline.com/common/discovery/v2.0/keys';
+        })(),
         'issuer_prefix' => env('MICROSOFT_ISSUER_PREFIX', 'https://login.microsoftonline.com'),
     ],
 

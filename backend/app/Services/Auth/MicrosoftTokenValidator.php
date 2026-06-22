@@ -2,11 +2,16 @@
 
 namespace App\Services\Auth;
 
+use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Firebase\JWT\SignatureInvalidException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -15,26 +20,69 @@ class MicrosoftTokenValidator
     public function validate(string $idToken, ?string $expectedNonce = null): array
     {
         try {
-            $jwks = Cache::remember('microsoft.jwks', now()->addHour(), function (): array {
+            $jwksUrl = trim((string) config('services.microsoft.jwks_url'));
+
+            if ($jwksUrl === '') {
+                throw new \RuntimeException('Microsoft JWKS URL is not configured.');
+            }
+
+            $jwks = Cache::remember('microsoft.jwks', now()->addHour(), function () use ($jwksUrl): array {
                 return Http::timeout(10)
                     ->acceptJson()
-                    ->get(config('services.microsoft.jwks_url'))
+                    ->get($jwksUrl)
                     ->throw()
                     ->json();
             });
 
+            JWT::$leeway = 60;
+
             $claims = (array) JWT::decode($idToken, JWK::parseKeySet($this->normalizeKeySet($jwks)));
-        } catch (Throwable $exception) {
+        } catch (ConnectionException|RequestException $exception) {
             report($exception);
-
-            $message = 'Unable to validate the Microsoft identity token.';
-
-            if (config('app.debug')) {
-                $message .= ' '.$exception->getMessage();
-            }
+            Log::error('Microsoft JWKS fetch failed.', [
+                'jwks_url' => config('services.microsoft.jwks_url'),
+                'message' => $exception->getMessage(),
+            ]);
 
             throw ValidationException::withMessages([
-                'id_token' => $message,
+                'id_token' => $this->publicValidationMessage(
+                    'Unable to reach Microsoft to validate the identity token. Check backend outbound HTTPS access and MICROSOFT_JWKS_URL.',
+                    $exception,
+                ),
+            ]);
+        } catch (ExpiredException $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'id_token' => $this->publicValidationMessage(
+                    'The Microsoft identity token has expired. Sign in again.',
+                    $exception,
+                ),
+            ]);
+        } catch (SignatureInvalidException $exception) {
+            report($exception);
+            Cache::forget('microsoft.jwks');
+
+            throw ValidationException::withMessages([
+                'id_token' => $this->publicValidationMessage(
+                    'The Microsoft identity token signature is invalid. Verify MICROSOFT_CLIENT_ID and MICROSOFT_JWKS_URL match your Entra app tenant.',
+                    $exception,
+                ),
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+            Log::error('Microsoft identity token validation failed.', [
+                'jwks_url' => config('services.microsoft.jwks_url'),
+                'client_id' => config('services.microsoft.client_id'),
+                'class' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'id_token' => $this->publicValidationMessage(
+                    'Unable to validate the Microsoft identity token.',
+                    $exception,
+                ),
             ]);
         }
 
@@ -75,11 +123,24 @@ class MicrosoftTokenValidator
 
     private function validateAudience(array $claims): void
     {
-        if (($claims['aud'] ?? null) !== config('services.microsoft.client_id')) {
+        $expectedAudience = (string) config('services.microsoft.client_id');
+        $audience = $claims['aud'] ?? null;
+        $audiences = is_array($audience) ? $audience : [$audience];
+
+        if ($expectedAudience === '' || ! in_array($expectedAudience, $audiences, true)) {
             throw ValidationException::withMessages([
                 'id_token' => 'The Microsoft token audience is invalid for this application.',
             ]);
         }
+    }
+
+    private function publicValidationMessage(string $message, Throwable $exception): string
+    {
+        if (config('app.debug')) {
+            return trim($message.' '.$exception->getMessage());
+        }
+
+        return $message;
     }
 
     private function normalizeKeySet(array $jwks): array
@@ -105,7 +166,15 @@ class MicrosoftTokenValidator
         $issuer = (string) ($claims['iss'] ?? '');
         $expectedPrefix = rtrim((string) config('services.microsoft.issuer_prefix'), '/');
 
-        if (! $tenantId || ! str_starts_with($issuer, $expectedPrefix.'/'.$tenantId)) {
+        $trustedIssuerPrefixes = array_values(array_filter([
+            $tenantId ? "{$expectedPrefix}/{$tenantId}" : null,
+            $tenantId ? "https://sts.windows.net/{$tenantId}" : null,
+        ]));
+
+        $issuerTrusted = $trustedIssuerPrefixes !== []
+            && Arr::first($trustedIssuerPrefixes, fn (string $prefix): bool => str_starts_with($issuer, $prefix)) !== null;
+
+        if (! $tenantId || ! $issuerTrusted) {
             throw ValidationException::withMessages([
                 'id_token' => 'The Microsoft token issuer is not trusted.',
             ]);

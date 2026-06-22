@@ -20,6 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: rollcall-backend
     restart: unless-stopped
     depends_on:
       mysql:
@@ -69,9 +70,7 @@ services:
       start_period: 180s
 
   queue:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: rollcall-backend
     restart: unless-stopped
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     depends_on:

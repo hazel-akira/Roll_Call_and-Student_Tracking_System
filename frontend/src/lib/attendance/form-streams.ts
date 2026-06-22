@@ -60,16 +60,23 @@ export async function fetchFormStreamsForSchool(
       error: null,
     };
   } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 422) {
+    if (isAxiosError(error) && error.response?.data) {
+      const data = error.response.data;
       const message =
-        typeof error.response.data === "object" &&
-        error.response.data !== null &&
-        "message" in error.response.data &&
-        typeof error.response.data.message === "string"
-          ? error.response.data.message
-          : "Select a school in the header first.";
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
+          ? data.message
+          : null;
 
-      return { payload: null, error: message };
+      if (message) {
+        return { payload: null, error: message };
+      }
+    }
+
+    if (isAxiosError(error) && error.response?.status === 422) {
+      return { payload: null, error: "Select a school in the header first." };
     }
 
     return {

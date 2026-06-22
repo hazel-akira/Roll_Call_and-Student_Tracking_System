@@ -22,8 +22,23 @@ class DynamicsService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('dynamics.url', ''), '/');
+        $this->baseUrl = self::normalizeBaseUrl((string) config('dynamics.url', ''));
         $this->apiVersion = config('dynamics.api_version', 'v9.2');
+    }
+
+    private static function normalizeBaseUrl(string $url): string
+    {
+        $url = rtrim(trim($url), '/');
+
+        if ($url === '') {
+            return '';
+        }
+
+        if (! preg_match('#^https?://#i', $url)) {
+            $url = 'https://'.$url;
+        }
+
+        return $url;
     }
 
     public function isEnabled(): bool
@@ -69,7 +84,9 @@ class DynamicsService
         }
 
         $url = "https://login.microsoftonline.com/{$tenant}/oauth2/v2.0/token";
-        $scope = $this->baseUrl ? "{$this->baseUrl}/.default" : 'https://org.crm.dynamics.com/.default';
+        $scope = config('dynamics.scope')
+            ?: config('services.dynamics.scope')
+            ?: ($this->baseUrl !== '' ? "{$this->baseUrl}/.default" : 'https://org.crm.dynamics.com/.default');
 
         try {
             /** @var Response $response */

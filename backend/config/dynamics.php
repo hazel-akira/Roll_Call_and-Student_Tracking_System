@@ -20,6 +20,7 @@ return [
     'api_version' => env('DYNAMICS_API_VERSION', 'v9.2'),
     'timeout' => (int) env('DYNAMICS_TIMEOUT', 30),
     'connect_timeout' => (int) env('DYNAMICS_CONNECT_TIMEOUT', 10),
+    'scope' => env('DYNAMICS_SCOPE'),
     'azure' => [
         'tenant_id' => $dynamicsCredential('DYNAMICS_TENANT_ID', 'DYNAMICS_AZURE_TENANT_ID', 'AZURE_AD_TENANT_ID'),
         'client_id' => $dynamicsCredential('DYNAMICS_CLIENT_ID', 'DYNAMICS_AZURE_CLIENT_ID', 'AZURE_AD_CLIENT_ID'),

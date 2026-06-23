@@ -20,7 +20,19 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => array_values(array_filter(array_map(
-        'trim',
+        static function (string $origin): string {
+            $origin = trim($origin);
+
+            if ($origin === '') {
+                return '';
+            }
+
+            if (! preg_match('#^https?://#i', $origin)) {
+                $origin = 'https://'.$origin;
+            }
+
+            return rtrim($origin, '/');
+        },
         explode(',', env('CORS_ALLOWED_ORIGINS', env('FRONTEND_URL', 'http://localhost:3000')))
     ))),
 

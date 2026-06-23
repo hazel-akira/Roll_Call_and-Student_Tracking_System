@@ -131,6 +131,22 @@ Set these in Coolify (Compose environment / `.env` on the server):
 
 If you change `DB_PASSWORD` after the first deploy, the existing MySQL volume keeps the old password. Either restore the original password or delete the `mysql_data` volume and redeploy (this wipes the database).
 
+### Build fails with exit code 255 (timeout during backend build)
+
+Coolify logs may show `Added 111 ARG declarations to Dockerfile for service backend` and the build dies while compiling PHP extensions.
+
+**Cause:** First backend image build is heavy (PHP extensions + Composer + Vite assets). Small VPS instances often hit a **build timeout** or **out of memory** around 4–8 minutes.
+
+**Fixes (try in order):**
+
+1. **Redeploy with Rebuild** — frontend may already be cached; backend may complete on retry.
+2. **Coolify → your resource → Settings** — disable **Inject Build Args to Dockerfile** for the backend service if available (v4.0.450+). Backend only needs runtime env vars, not build args. Only `frontend` needs `NEXT_PUBLIC_*` at build time.
+3. **Increase server RAM** — 4 GB minimum recommended for first compose build.
+4. **Pull latest `main`** — backend Dockerfile uses `install-php-extensions` (pre-built binaries) for faster builds.
+5. Wait **10–15 minutes** on first deploy before assuming failure.
+
+**URL env vars:** Every `APP_URL`, `FRONTEND_URL`, and `NEXT_PUBLIC_*` value must include `https://` (e.g. `https://your-domain.sandbox...`, not bare hostname). Missing `https://` causes CORS "Network Error" on login.
+
 ### Backend unhealthy on deploy
 
 The backend entrypoint runs migrations in the background while nginx starts. First deploy can take 30–90 seconds before `/up` returns 200. The compose health check allows a **180s** start period and treats bootstrap as healthy until migrations finish.

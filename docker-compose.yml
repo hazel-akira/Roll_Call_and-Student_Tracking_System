@@ -28,7 +28,7 @@ services:
     environment:
       APP_NAME: ${APP_NAME:-Roll Call API}
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       APP_KEY: ${APP_KEY:?Set APP_KEY}
       APP_URL: ${APP_URL:?Set APP_URL}
       FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}

@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Reports;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\AttendanceReportRequest;
 use App\Jobs\GenerateAttendanceExport;
+use App\Models\Notification;
 use App\Services\Reports\AttendanceReportService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -49,5 +53,55 @@ class ReportController extends Controller
         return response()->json([
             'message' => 'Report export queued successfully.',
         ], 202);
+    }
+
+    public function downloadExport(Notification $notification, Request $request): StreamedResponse|JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($notification->user_id === $user->id, 403);
+        abort_unless($notification->type === 'report', 404);
+
+        $storedPath = $notification->data['path'] ?? null;
+        $format = $notification->data['format'] ?? 'xlsx';
+
+        if (! is_string($storedPath) || $storedPath === '') {
+            return response()->json(['message' => 'Export file is not available.'], 404);
+        }
+
+        $resolvedPath = $this->resolveExportStoragePath($storedPath);
+
+        if ($resolvedPath === null || ! Storage::exists($resolvedPath)) {
+            return response()->json(['message' => 'Export file was not found on the server.'], 404);
+        }
+
+        $mimeType = $format === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        return Storage::download(
+            $resolvedPath,
+            basename($resolvedPath),
+            ['Content-Type' => $mimeType],
+        );
+    }
+
+    private function resolveExportStoragePath(string $path): ?string
+    {
+        $candidates = [$path];
+
+        if (str_starts_with($path, 'private/')) {
+            $candidates[] = substr($path, strlen('private/'));
+        } else {
+            $candidates[] = 'private/'.$path;
+        }
+
+        foreach (array_unique($candidates) as $candidate) {
+            if (Storage::exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }

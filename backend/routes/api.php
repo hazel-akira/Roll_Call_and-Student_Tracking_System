@@ -55,6 +55,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('reports/class-trends', [ReportController::class, 'classTrends'])->middleware('role:admin,ict_staff');
         Route::get('reports/student-trends', [ReportController::class, 'studentTrends'])->middleware('role:admin,ict_staff');
         Route::get('reports/export', [ReportController::class, 'export'])->middleware('role:admin,ict_staff');
+        Route::get('reports/exports/{notification}/download', [ReportController::class, 'downloadExport'])->middleware('role:admin,ict_staff');
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('role:admin,ict_staff');
         Route::get('notifications', [NotificationController::class, 'index']);

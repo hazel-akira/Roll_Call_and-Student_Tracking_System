@@ -4,10 +4,12 @@ namespace Tests\Feature\Reports;
 
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
+use App\Models\Notification;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\Subject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\AuthenticatesWithJwt;
 use Tests\TestCase;
 
@@ -76,5 +78,60 @@ class ReportsApiTest extends TestCase
         $response
             ->assertStatus(403)
             ->assertJsonPath('message', 'You do not have permission to access this resource.');
+    }
+
+    public function test_admin_can_download_their_report_export(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createUserWithRole('admin');
+        $path = 'exports/attendance-report-test.xlsx';
+        Storage::put($path, 'spreadsheet-content');
+
+        $notification = Notification::query()->create([
+            'user_id' => $admin->id,
+            'type' => 'report',
+            'channel' => 'in_app',
+            'title' => 'Attendance export ready',
+            'body' => 'Your attendance export has been generated successfully.',
+            'data' => ['path' => $path, 'format' => 'xlsx'],
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->get(
+            '/api/v1/reports/exports/'.$notification->id.'/download',
+            $this->authHeaders($admin),
+        );
+
+        $response
+            ->assertOk()
+            ->assertDownload('attendance-report-test.xlsx');
+    }
+
+    public function test_admin_cannot_download_another_users_report_export(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createUserWithRole('admin');
+        $otherAdmin = $this->createUserWithRole('admin');
+        $path = 'exports/attendance-report-test.xlsx';
+        Storage::put($path, 'spreadsheet-content');
+
+        $notification = Notification::query()->create([
+            'user_id' => $otherAdmin->id,
+            'type' => 'report',
+            'channel' => 'in_app',
+            'title' => 'Attendance export ready',
+            'body' => 'Your attendance export has been generated successfully.',
+            'data' => ['path' => $path, 'format' => 'xlsx'],
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->get(
+            '/api/v1/reports/exports/'.$notification->id.'/download',
+            $this->authHeaders($admin),
+        );
+
+        $response->assertForbidden();
     }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ReportExportsPanel } from "@/components/reports/report-exports-panel";
 import { ReportFilters, type ReportFilters as FilterState } from "@/components/reports/report-filters";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { Button } from "@/components/ui/button";
@@ -39,9 +40,43 @@ export default function ReportsPage() {
     class_id: "",
   });
   const [summary, setSummary] = useState<ReportSummaryResponse | null>(null);
-  const [classTrends, setClassTrends] = useState<Array<Record<string, unknown>>>([]);
-  const [studentTrends, setStudentTrends] = useState<Array<Record<string, unknown>>>([]);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportPolling, setExportPolling] = useState(false);
+  const [exportBusy, setExportBusy] = useState<"xlsx" | "pdf" | null>(null);
   const canViewReports = user?.role?.slug === "admin" || user?.role?.slug === "ict_staff";
+
+  const reportParams = useCallback(
+    () => ({
+      from: filters.from,
+      to: filters.to,
+      class_id: filters.class_id || undefined,
+    }),
+    [filters],
+  );
+
+  const queueExport = useCallback(
+    async (format: "xlsx" | "pdf") => {
+      setExportBusy(format);
+      setExportError(null);
+      setExportMessage(null);
+
+      try {
+        await apiClient.get("/reports/export", {
+          params: { ...reportParams(), format },
+        });
+        setExportMessage(
+          `${format.toUpperCase()} export queued. It will appear below when ready.`,
+        );
+        setExportPolling(true);
+      } catch {
+        setExportError("Unable to queue the export. Confirm the queue worker is running.");
+      } finally {
+        setExportBusy(null);
+      }
+    },
+    [reportParams],
+  );
 
   useEffect(() => {
     if (loading || !user) {
@@ -69,31 +104,19 @@ export default function ReportsPage() {
   }, [canViewReports, revision]);
 
   const loadReports = useCallback(async () => {
-    const params = {
-      ...filters,
-      class_id: filters.class_id || undefined,
-    };
+    const params = reportParams();
 
     try {
-      const [summaryResponse, classResponse, studentResponse] = await Promise.all([
-        apiClient.get<ReportSummaryResponse>("/reports/attendance-summary", { params }),
-        apiClient.get<{ data: Array<Record<string, unknown>> }>("/reports/class-trends", {
-          params,
-        }),
-        apiClient.get<{ data: Array<Record<string, unknown>> }>("/reports/student-trends", {
-          params,
-        }),
-      ]);
+      const summaryResponse = await apiClient.get<ReportSummaryResponse>(
+        "/reports/attendance-summary",
+        { params },
+      );
 
       setSummary(summaryResponse.data);
-      setClassTrends(classResponse.data.data);
-      setStudentTrends(studentResponse.data.data);
     } catch {
       setSummary(null);
-      setClassTrends([]);
-      setStudentTrends([]);
     }
-  }, [filters]);
+  }, [reportParams]);
 
   useEffect(() => {
     if (!canViewReports) {
@@ -104,45 +127,19 @@ export default function ReportsPage() {
 
     async function bootstrap() {
       try {
-        const [summaryResponse, classResponse, studentResponse] = await Promise.all([
-          apiClient.get<ReportSummaryResponse>("/reports/attendance-summary", {
-            params: {
-              ...filters,
-              class_id: filters.class_id || undefined,
-            },
-          }),
-          apiClient.get<{ data: Array<Record<string, unknown>> }>(
-            "/reports/class-trends",
-            {
-              params: {
-                ...filters,
-                class_id: filters.class_id || undefined,
-              },
-            },
-          ),
-          apiClient.get<{ data: Array<Record<string, unknown>> }>(
-            "/reports/student-trends",
-            {
-              params: {
-                ...filters,
-                class_id: filters.class_id || undefined,
-              },
-            },
-          ),
-        ]);
+        const summaryResponse = await apiClient.get<ReportSummaryResponse>(
+          "/reports/attendance-summary",
+          { params: reportParams() },
+        );
 
         if (cancelled) {
           return;
         }
 
         setSummary(summaryResponse.data);
-        setClassTrends(classResponse.data.data);
-        setStudentTrends(studentResponse.data.data);
       } catch {
         if (!cancelled) {
           setSummary(null);
-          setClassTrends([]);
-          setStudentTrends([]);
         }
       }
     }
@@ -152,7 +149,7 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [canViewReports, filters, revision]);
+  }, [canViewReports, filters, reportParams, revision]);
 
   if (!canViewReports) {
     return null;
@@ -180,26 +177,29 @@ export default function ReportsPage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Button
             variant="outline"
-            onClick={() =>
-              void apiClient
-                .get("/reports/export", { params: { ...filters, format: "xlsx" } })
-                .catch(() => undefined)
-            }
+            disabled={exportBusy !== null}
+            onClick={() => void queueExport("xlsx")}
           >
-            Queue Excel export
+            {exportBusy === "xlsx" ? "Queueing Excel…" : "Queue Excel export"}
           </Button>
           <Button
             variant="outline"
-            onClick={() =>
-              void apiClient
-                .get("/reports/export", { params: { ...filters, format: "pdf" } })
-                .catch(() => undefined)
-            }
+            disabled={exportBusy !== null}
+            onClick={() => void queueExport("pdf")}
           >
-            Queue PDF export
+            {exportBusy === "pdf" ? "Queueing PDF…" : "Queue PDF export"}
           </Button>
         </div>
+        {exportMessage ? (
+          <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">{exportMessage}</p>
+        ) : null}
+        {exportError ? (
+          <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+            {exportError}
+          </p>
+        ) : null}
       </Card>
+      
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Records" value={summary?.totals.records ?? 0} />
         <SummaryCard label="Present" value={summary?.totals.present ?? 0} />
@@ -207,20 +207,10 @@ export default function ReportsPage() {
         <SummaryCard label="Late" value={summary?.totals.late ?? 0} />
         <SummaryCard label="Attendance rate" value={`${summary?.totals.attendance_rate ?? 0}%`} />
       </section>
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold">Class trends</h2>
-          <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-50 p-4 text-xs dark:bg-slate-900">
-            {JSON.stringify(classTrends, null, 2)}
-          </pre>
-        </Card>
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold">Student trends</h2>
-          <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-50 p-4 text-xs dark:bg-slate-900">
-            {JSON.stringify(studentTrends, null, 2)}
-          </pre>
-        </Card>
-      </section>
+      <ReportExportsPanel
+        pollForNewExport={exportPolling}
+        onPollComplete={() => setExportPolling(false)}
+      />
     </div>
   );
 }

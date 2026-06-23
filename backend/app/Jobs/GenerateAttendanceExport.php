@@ -6,6 +6,9 @@ use App\Exports\AttendanceSummaryExport;
 use App\Models\User;
 use App\Services\Notifications\NotificationService;
 use App\Services\Reports\AttendanceReportService;
+use App\Services\Reports\ReportPdfTemplateResolver;
+use App\Services\Reports\RollCallMemoBuilder;
+use App\Services\Reports\WeeklyRollCallSheetBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -23,8 +26,13 @@ class GenerateAttendanceExport implements ShouldQueue
     ) {
     }
 
-    public function handle(AttendanceReportService $reportService, NotificationService $notificationService): void
-    {
+    public function handle(
+        AttendanceReportService $reportService,
+        RollCallMemoBuilder $memoBuilder,
+        WeeklyRollCallSheetBuilder $weeklySheetBuilder,
+        ReportPdfTemplateResolver $templateResolver,
+        NotificationService $notificationService,
+    ): void {
         $user = User::query()->find($this->userId);
 
         if (! $user) {
@@ -32,14 +40,26 @@ class GenerateAttendanceExport implements ShouldQueue
         }
 
         $rows = $reportService->exportRows($this->filters);
-        $directory = 'private/exports';
+        $directory = 'exports';
         Storage::makeDirectory($directory);
         $timestamp = now()->format('YmdHis');
         $fileName = sprintf('attendance-report-%s.%s', $timestamp, $this->format);
         $path = $directory.'/'.$fileName;
 
         if ($this->format === 'pdf') {
-            $content = Pdf::loadView('reports.attendance-summary', ['rows' => $rows])->output();
+            $schoolId = isset($this->filters['school_id']) ? (int) $this->filters['school_id'] : null;
+            $template = $templateResolver->resolve($schoolId);
+
+            if ($template === 'weekly_roll_call_sheet') {
+                $content = Pdf::loadView('reports.weekly-roll-call-sheet', [
+                    'sheet' => $weeklySheetBuilder->build($this->filters),
+                ])->output();
+            } else {
+                $content = Pdf::loadView('reports.roll-call-memo', [
+                    'memos' => $memoBuilder->buildPages($this->filters),
+                ])->output();
+            }
+
             Storage::put($path, $content);
         } else {
             Excel::store(new AttendanceSummaryExport($rows), $path);

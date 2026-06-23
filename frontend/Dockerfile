@@ -1,11 +1,10 @@
-FROM node:20-bookworm-slim AS deps
+# Single builder stage (avoids Coolify ARG injection breaking COPY --from=deps).
+FROM node:20-bookworm-slim AS builder
 WORKDIR /app
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:20-bookworm-slim AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_APP_URL

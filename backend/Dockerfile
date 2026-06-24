@@ -19,7 +19,8 @@ COPY . .
 
 RUN composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
-    && chown -R www-data:www-data storage bootstrap/cache \
+    && php artisan filament:assets \
+    && chown -R www-data:www-data storage bootstrap/cache public/css public/js public/fonts \
     && chmod -R ug+rwx storage bootstrap/cache
 
 FROM node:20-bookworm-slim AS assets

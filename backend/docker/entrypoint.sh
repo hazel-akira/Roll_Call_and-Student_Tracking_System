@@ -90,9 +90,12 @@ bootstrap_app() {
 
   wait_for_database
 
-  php artisan storage:link --force 2>/dev/null || true
+    php artisan storage:link --force 2>/dev/null || true
 
-  echo "Running database migrations..."
+    echo "Publishing Filament assets..."
+    php artisan filament:assets
+
+    echo "Running database migrations..."
   php artisan migrate --force
 
   echo "Seeding roles, schools, and default assignments..."

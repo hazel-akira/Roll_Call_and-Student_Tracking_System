@@ -176,18 +176,35 @@ Fix:
 3. Open the backend terminal and run: `php artisan config:clear && php artisan migrate --force && php artisan config:cache`
 4. Redeploy the backend so cached config is rebuilt with MySQL settings (Laravel ignores `.env` changes while `bootstrap/cache/config.php` exists).
 
+### Filament `/admin` login has no styling (plain HTML)
+
+Filament CSS/JS were not published in the container. In the **backend** terminal:
+
+```bash
+php artisan filament:assets
+php artisan config:cache
+```
+
+Hard-refresh the browser (`Ctrl+Shift+R`). Redeploy the latest backend image so `filament:assets` runs on build and boot.
+
+Confirm `APP_URL` in Coolify is the **HTTPS** backend URL (e.g. `https://your-api.sandbox.example.co.ke`), not `http://`.
+
 ### Login error: `Table 'roll_call.schools' doesn't exist`
 
 The API is connected to MySQL, but the **schools** / **school_user** migrations have not been applied yet (common after upgrading an older deployment).
 
-Fix in the **backend** container terminal:
+If `php artisan migrate --force` fails with **“Table already exists”**, the database schema and `migrations` history are out of sync. Repair, then migrate:
 
 ```bash
+php artisan migrate:repair --force
 php artisan migrate --force
 php artisan db:seed --force
+php artisan config:cache
 ```
 
-Then sign in again. If you use Docker Compose locally:
+If migrate succeeds without repair, the two `artisan` migrate/seed commands alone are enough.
+
+Then sign in again. For Docker Compose locally:
 
 ```bash
 make docker-migrate

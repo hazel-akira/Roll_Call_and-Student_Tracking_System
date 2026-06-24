@@ -4,9 +4,30 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { AttendanceSession, Student } from "@/types";
 
 const statuses = ["present", "missing", "sick", "on_leave"] as const;
+
+type AttendanceUiStatus = (typeof statuses)[number];
+
+const statusSelectedStyles: Record<AttendanceUiStatus, string> = {
+  present:
+    "border-emerald-600 bg-emerald-500 text-white shadow-sm dark:border-emerald-500 dark:bg-emerald-600",
+  missing:
+    "border-red-900 bg-red-800 text-white shadow-sm dark:border-red-800 dark:bg-red-900",
+  sick: "border-amber-500 bg-amber-500 text-white shadow-sm dark:border-amber-500 dark:bg-amber-600",
+  on_leave:
+    "border-orange-500 bg-orange-500 text-white shadow-sm dark:border-orange-500 dark:bg-orange-600",
+};
+
+function statusLabel(status: AttendanceUiStatus): string {
+  if (status === "on_leave") {
+    return "On Leave";
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 export function AttendanceRecordsTable({
   session,
@@ -114,11 +135,12 @@ export function AttendanceRecordsTable({
                       <button
                         key={status}
                         type="button"
-                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                        className={cn(
+                          "rounded-lg border px-2.5 py-1 text-xs font-medium transition",
                           row.status === status
-                            ? "border-(--color-primary) bg-(--surface-muted) text-(--color-primary)"
-                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        }`}
+                            ? statusSelectedStyles[status]
+                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
+                        )}
                         onClick={() =>
                           setStatusMap((current) => ({
                             ...current,
@@ -126,7 +148,7 @@ export function AttendanceRecordsTable({
                           }))
                         }
                       >
-                        {status === "on_leave" ? "On Leave" : status.charAt(0).toUpperCase() + status.slice(1)}
+                        {statusLabel(status)}
                       </button>
                     ))}
                   </div>

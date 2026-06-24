@@ -61,8 +61,12 @@ DYNAMICS_SCOPE=...
 After first deploy, open the Coolify terminal and run:
 
 ```bash
+php artisan migrate --force
+php artisan db:seed --force
 php artisan make:filament-user
 ```
+
+If login shows `Table 'roll_call.schools' doesn't exist`, the MySQL schema was never migrated. Run the two `artisan` commands above in the **backend** container terminal, then refresh the app.
 
 ### 3. Queue worker
 
@@ -171,6 +175,25 @@ Fix:
 2. For Docker Compose, confirm the backend service is healthy — its entrypoint runs `php artisan migrate --force` on start.
 3. Open the backend terminal and run: `php artisan config:clear && php artisan migrate --force && php artisan config:cache`
 4. Redeploy the backend so cached config is rebuilt with MySQL settings (Laravel ignores `.env` changes while `bootstrap/cache/config.php` exists).
+
+### Login error: `Table 'roll_call.schools' doesn't exist`
+
+The API is connected to MySQL, but the **schools** / **school_user** migrations have not been applied yet (common after upgrading an older deployment).
+
+Fix in the **backend** container terminal:
+
+```bash
+php artisan migrate --force
+php artisan db:seed --force
+```
+
+Then sign in again. If you use Docker Compose locally:
+
+```bash
+make docker-migrate
+```
+
+After redeploying the latest backend image, the entrypoint also runs migrate + seed automatically on container start.
 
 ## Local Docker test
 

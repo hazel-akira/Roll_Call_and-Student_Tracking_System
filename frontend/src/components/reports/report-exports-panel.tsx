@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { ReportExportPreview } from "@/components/reports/report-export-preview";
 import { apiClient } from "@/lib/api/client";
 import {
   downloadReportExport,
@@ -36,6 +38,7 @@ export function ReportExportsPanel({
   const [exports, setExports] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [previewNotification, setPreviewNotification] = useState<NotificationItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const baselineExportCount = useRef(0);
@@ -128,65 +131,103 @@ export function ReportExportsPanel({
     }
   }
 
+  function handleOpenPreview(notification: NotificationItem) {
+    setPreviewNotification(notification);
+  }
+
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Recent exports</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {pollForNewExport
-              ? "Generating export… this list refreshes automatically."
-              : "Download completed Excel or PDF reports."}
-          </p>
+    <>
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Recent exports</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {pollForNewExport
+                ? "Generating export… this list refreshes automatically."
+                : "Click an export to preview it, then download when ready."}
+            </p>
+          </div>
+          {pollForNewExport ? <Spinner /> : null}
         </div>
-        {pollForNewExport ? <Spinner /> : null}
-      </div>
 
-      {error ? (
-        <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-4 space-y-3">
-        {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading exports…</p>
-        ) : exports.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            No exports yet. Queue an Excel or PDF export above.
+        {error ? (
+          <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+            {error}
           </p>
-        ) : (
-          exports.map((notification) => {
-            const format =
-              typeof notification.data?.format === "string"
-                ? notification.data.format.toUpperCase()
-                : "FILE";
+        ) : null}
 
-            return (
-              <div
-                key={notification.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-              >
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {notification.title}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {format} · {formatDate(notification.sent_at ?? notification.read_at)}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  disabled={downloadingId === notification.id}
-                  onClick={() => void handleDownload(notification)}
+        <div className="mt-4 space-y-3">
+          {loading ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading exports…</p>
+          ) : exports.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No exports yet. Queue an Excel or PDF export above.
+            </p>
+          ) : (
+            exports.map((notification) => {
+              const format =
+                typeof notification.data?.format === "string"
+                  ? notification.data.format.toUpperCase()
+                  : "FILE";
+
+              return (
+                <div
+                  key={notification.id}
+                  role="button"
+                  tabIndex={0}
+                  className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 text-left transition hover:border-sky-300 hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-800 dark:hover:border-sky-500/40 dark:hover:bg-sky-500/5"
+                  onClick={() => handleOpenPreview(notification)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleOpenPreview(notification);
+                    }
+                  }}
                 >
-                  {downloadingId === notification.id ? "Downloading…" : "Download"}
-                </Button>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </Card>
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {notification.title}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {format} · {formatDate(notification.sent_at ?? notification.read_at)}
+                    </p>
+                  </div>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleOpenPreview(notification)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={downloadingId === notification.id}
+                      onClick={() => void handleDownload(notification)}
+                    >
+                      <FileDown className="mr-2 h-4 w-4" />
+                      {downloadingId === notification.id ? "Downloading…" : "Download"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Card>
+
+      {previewNotification ? (
+        <ReportExportPreview
+          notification={previewNotification}
+          onClose={() => setPreviewNotification(null)}
+        />
+      ) : null}
+    </>
   );
 }

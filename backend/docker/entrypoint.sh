@@ -95,6 +95,9 @@ bootstrap_app() {
   echo "Running database migrations..."
   php artisan migrate --force
 
+  echo "Seeding roles, schools, and default assignments..."
+  php artisan db:seed --force
+
   echo "Optimizing for production..."
   php artisan config:cache
   php artisan route:cache

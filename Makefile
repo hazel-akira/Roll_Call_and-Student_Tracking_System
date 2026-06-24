@@ -39,3 +39,8 @@ frontend-build: frontend-install
 	cd frontend && npm run build
 
 check: backend-test frontend-lint frontend-build
+
+docker-migrate:
+	@test -f .env || (echo "Create .env from .env.docker.example first." && exit 1)
+	docker compose exec backend php artisan migrate --force
+	docker compose exec backend php artisan db:seed --force

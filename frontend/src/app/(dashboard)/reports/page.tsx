@@ -158,16 +158,16 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+        <p className="page-eyebrow">
           Reporting and analytics
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">Attendance insights and export tools</h1>
+        <h1 className="page-title">Attendance insights and export tools</h1>
         {currentSchool ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Reports for {currentSchool.name}
           </p>
         ) : (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Select a school in the header to scope reports to one campus.
           </p>
         )}

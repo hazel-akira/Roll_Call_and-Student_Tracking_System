@@ -16,25 +16,25 @@ export function ClassStreamDetail({ page }: { page: ClassStreamPage }) {
       <div className="flex flex-wrap items-center gap-4">
         <Link
           href="/class-streams"
-          className="inline-flex h-9 items-center rounded-xl border px-3 text-sm font-semibold text-(--color-primary) hover:bg-(--surface-muted) dark:text-(--foreground)"
+          className="inline-flex h-9 items-center rounded-xl border px-3 text-sm font-semibold text-foreground hover:bg-(--surface-muted)"
         >
           <ArrowLeft size={16} className="mr-2" />
           All classes
         </Link>
         <Link
           href="/attendance"
-          className="inline-flex h-9 items-center rounded-xl bg-(--surface-muted) px-3 text-sm font-semibold text-(--color-primary) hover:bg-[rgba(212,174,43,0.18)] dark:text-(--foreground)"
+          className="inline-flex h-9 items-center rounded-xl bg-(--surface-muted) px-3 text-sm font-semibold text-foreground hover:bg-[rgba(212,174,43,0.18)]"
         >
           Take roll call
         </Link>
       </div>
 
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+        <p className="page-eyebrow">
           {page.gradeLevel}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">{page.label}</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        <h1 className="page-title">{page.label}</h1>
+        <p className="mt-2 text-sm text-muted">
           {page.studentCount} student(s)
           {page.stream ? ` · Stream: ${page.stream}` : ""}
         </p>
@@ -47,7 +47,7 @@ export function ClassStreamDetail({ page }: { page: ClassStreamPage }) {
 
       <Card className="overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-          <h2 className="text-lg font-semibold">Students</h2>
+          <h2 className="section-title">Students</h2>
         </div>
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {page.students.map((student) => (
@@ -56,10 +56,10 @@ export function ClassStreamDetail({ page }: { page: ClassStreamPage }) {
               className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"
             >
               <div>
-                <p className="font-medium text-slate-900 dark:text-white">{student.full_name}</p>
-                <p className="text-slate-500">{student.admission_number}</p>
+                <p className="font-medium text-foreground">{student.full_name}</p>
+                <p className="text-muted">{student.admission_number}</p>
               </div>
-              <span className="text-slate-500">{student.status}</span>
+              <span className="text-muted">{student.status}</span>
             </li>
           ))}
         </ul>

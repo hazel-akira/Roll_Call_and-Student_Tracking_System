@@ -46,7 +46,7 @@ export function Sidebar({
       <button
         type="button"
         className={cn(
-          "fixed inset-0 z-40 bg-slate-950 transition-opacity lg:hidden",
+          "fixed inset-0 z-40 bg-(--overlay) transition-opacity lg:hidden",
           mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={onCloseMobile}
@@ -69,10 +69,10 @@ export function Sidebar({
           </button>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex shrink-0 items-center justify-center bg-#13365F overflow-hidden">
+          <div className="flex shrink-0 items-center justify-center overflow-hidden bg-(--color-primary-deep)">
             {!logoMissing ? (
               <Image
-                src="/assets/pgos_logo.png"
+                src="/assets/dark_pgos_logo.png"
                 alt="PGOS logo"
                 width={100}
                 height={200}
@@ -103,7 +103,7 @@ export function Sidebar({
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
                   active
                     ? "bg-(--surface-muted) text-[#df8811]"
-                    : "text-(--text-muted) hover:bg-(--surface-muted) hover:text-white",
+                    : "text-(--text-muted) hover:bg-(--surface-muted) hover:text-foreground",
                 )}
               >
                 <Icon size={18} />

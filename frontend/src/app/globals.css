@@ -18,7 +18,10 @@
   --surface-solid: #ffffff;
   --surface-muted: #f0f4f8;
   --text-muted: #5b6b81;
-  --border-muted: rgba(117, 142, 170, 0.874);
+  --border-muted: rgba(117, 142, 170, 0.35);
+  --input-bg: #ffffff;
+  --overlay: rgba(15, 23, 42, 0.45);
+  --eyebrow: #0369a1;
 }
 
 .dark {
@@ -28,7 +31,10 @@
   --surface-solid: #10203a;
   --surface-muted: #142949;
   --text-muted: #a8bbd4;
-  --border-muted: rgba(212, 174, 43, 0.18);
+  --border-muted: rgba(168, 187, 212, 0.22);
+  --input-bg: #0c1829;
+  --overlay: rgba(2, 6, 23, 0.72);
+  --eyebrow: #7dd3fc;
 }
 
 @theme inline {
@@ -53,4 +59,58 @@ body {
 
 * {
   border-color: var(--border-muted);
+}
+
+@layer components {
+  .page-eyebrow {
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--eyebrow);
+  }
+
+  .page-title {
+    margin-top: 0.5rem;
+    font-size: 1.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .field-control {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-muted);
+    background: var(--input-bg);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--foreground);
+    outline: none;
+  }
+
+  .field-control:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .field-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .list-row {
+    transition: background-color 150ms ease;
+  }
+
+  .list-row:hover {
+    background: var(--surface-muted);
+  }
 }

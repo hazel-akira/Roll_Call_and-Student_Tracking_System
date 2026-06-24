@@ -454,12 +454,12 @@ export default function AttendancePage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+        <p className="page-eyebrow">
           Attendance management
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">Create sessions and capture roll call</h1>
+        <h1 className="page-title">Create sessions and capture roll call</h1>
         {currentSchool ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Classes and sessions for {currentSchool.name}
           </p>
         ) : null}
@@ -477,10 +477,10 @@ export default function AttendancePage() {
       />
       {formStreamSelection && !selectedSession ? (
         <Card className="p-5">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 className="section-title">
             Students for {activeClassLabel}
           </h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             {studentsLoading
               ? "Loading students..."
               : `${students.length} student(s) ready. Create a session to mark attendance.`}
@@ -493,7 +493,7 @@ export default function AttendancePage() {
                   className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800"
                 >
                   {student.full_name}{" "}
-                  <span className="text-slate-500">({student.admission_number})</span>
+                  <span className="text-muted">({student.admission_number})</span>
                 </li>
               ))}
             </ul>
@@ -503,22 +503,22 @@ export default function AttendancePage() {
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-            <h2 className="text-lg font-semibold">Attendance sessions</h2>
+            <h2 className="section-title">Attendance sessions</h2>
           </div>
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {sessions.map((session) => (
               <button
                 key={session.id}
                 type="button"
-                className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 dark:hover:bg-slate-900 ${
+                className={`w-full px-5 py-4 text-left transition list-row ${
                   selectedSessionId === session.id ? "bg-sky-50 dark:bg-sky-500/10" : ""
                 }`}
                 onClick={() => handleSelectSession(session)}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{session.title}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="font-medium text-foreground">{session.title}</p>
+                    <p className="mt-1 text-sm text-muted">
                       {(session.class?.grade_level ?? session.class?.name) || "Class"} ·{" "}
                       {session.class?.section || "No stream"} · {formatDate(session.session_date)}
                     </p>

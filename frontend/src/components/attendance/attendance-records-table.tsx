@@ -67,7 +67,7 @@ export function AttendanceRecordsTable({
 
   if (!session) {
     return (
-      <Card className="p-6 text-sm text-slate-500 dark:text-slate-400">
+      <Card className="p-6 text-sm text-muted">
         Select an attendance session to capture roll call records.
       </Card>
     );
@@ -75,12 +75,10 @@ export function AttendanceRecordsTable({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+      <div className="flex items-center justify-between border-b px-5 py-4">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-            {session.title}
-          </h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h3 className="section-title">{session.title}</h3>
+          <p className="mt-1 text-sm text-muted">
             {(session.class?.grade_level ?? session.class?.name) || "Class"} · {session.class?.section ?? "Stream"}
           </p>
         </div>
@@ -89,7 +87,7 @@ export function AttendanceRecordsTable({
           <Badge value={session.dynamics_sync_status} />
         </div>
       </div>
-      <div className="flex justify-end border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+      <div className="flex justify-end border-b px-5 py-3">
         <Button
           variant="secondary"
           disabled={busy || session.status === "closed"}
@@ -105,14 +103,14 @@ export function AttendanceRecordsTable({
         </Button>
       </div>
       {!hasSyncableStudents ? (
-        <p className="border-b border-slate-200 px-5 py-4 text-sm text-amber-800 dark:border-slate-800 dark:text-amber-200">
+        <p className="border-b px-5 py-4 text-sm text-amber-800 dark:text-amber-200">
           Students are still loading from Dataverse or are not synced to this class yet. Wait for the
           list to appear, or use Sync students from Dynamics, before saving attendance.
         </p>
       ) : null}
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+          <thead className="bg-(--surface-muted) text-left text-muted">
             <tr>
               <th className="px-5 py-3 font-medium">Student</th>
               <th className="px-5 py-3 font-medium">Admission #</th>
@@ -122,11 +120,11 @@ export function AttendanceRecordsTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.student.id} className="border-t border-slate-200 dark:border-slate-800">
-                <td className="px-5 py-3 font-medium text-slate-900 dark:text-white">
+              <tr key={row.student.id} className="border-t">
+                <td className="px-5 py-3 font-medium text-foreground">
                   {row.student.full_name}
                 </td>
-                <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
+                <td className="px-5 py-3 text-muted">
                   {row.student.admission_number}
                 </td>
                 <td className="px-5 py-3">
@@ -139,7 +137,7 @@ export function AttendanceRecordsTable({
                           "rounded-lg border px-2.5 py-1 text-xs font-medium transition",
                           row.status === status
                             ? statusSelectedStyles[status]
-                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
+                            : "border text-muted hover:bg-(--surface-muted)",
                         )}
                         onClick={() =>
                           setStatusMap((current) => ({
@@ -155,7 +153,7 @@ export function AttendanceRecordsTable({
                 </td>
                 <td className="px-5 py-3">
                   <input
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none dark:border-slate-700 dark:bg-slate-900"
+                    className="field-control w-full"
                     placeholder="Optional remark"
                     value={row.remark}
                     onChange={(event) =>

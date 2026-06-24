@@ -53,12 +53,12 @@ export default function TeacherDashboardPage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+        <p className="page-eyebrow">
           Teacher workspace
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">Today&apos;s attendance operations</h1>
+        <h1 className="page-title">Today&apos;s attendance operations</h1>
         {currentSchool ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             {currentSchool.name}
           </p>
         ) : null}
@@ -71,18 +71,18 @@ export default function TeacherDashboardPage() {
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-5">
-          <h2 className="text-lg font-semibold">Today&apos;s sessions</h2>
+          <h2 className="section-title">Today&apos;s sessions</h2>
           <div className="mt-4 space-y-3">
             {data?.today_sessions?.map((session) => (
               <div key={session.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{session.title}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="font-medium text-foreground">{session.title}</p>
+                    <p className="mt-1 text-sm text-muted">
                       {session.class?.grade_level ?? session.class?.name} · {session.class?.section ?? "Stream"}
                     </p>
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-muted">
                     {formatDate(session.started_at)}
                   </p>
                 </div>
@@ -91,12 +91,12 @@ export default function TeacherDashboardPage() {
           </div>
         </Card>
         <Card className="p-5">
-          <h2 className="text-lg font-semibold">Unread notifications</h2>
+          <h2 className="section-title">Unread notifications</h2>
           <div className="mt-4 space-y-3">
             {data?.notifications?.map((notification) => (
               <div key={notification.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <p className="font-medium text-slate-900 dark:text-white">{notification.title}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-white">{notification.body}</p>
+                <p className="font-medium text-foreground">{notification.title}</p>
+                <p className="mt-1 text-sm text-muted">{notification.body}</p>
               </div>
             ))}
           </div>

@@ -118,38 +118,38 @@ export function ReportExportPreview({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-(--overlay) p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="export-preview-title"
       onClick={handleClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-(--surface-solid) text-foreground shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
           <div>
-            <h2 id="export-preview-title" className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 id="export-preview-title" className="text-lg font-semibold text-foreground">
               {notification.title}
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-muted">
               {format} · {formatDate(notification.sent_at ?? notification.read_at)}
             </p>
           </div>
           <button
             type="button"
             aria-label="Close preview"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900"
+            className="rounded-lg p-2 text-muted hover:bg-(--surface-muted)"
             onClick={handleClose}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="min-h-[320px] flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900/40">
+        <div className="min-h-[320px] flex-1 overflow-hidden bg-(--surface-muted)">
           {loading ? (
-            <div className="flex h-full min-h-[320px] items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex h-full min-h-[320px] items-center justify-center gap-3 text-sm text-muted">
               <Spinner />
               Loading preview…
             </div>
@@ -163,7 +163,7 @@ export function ReportExportPreview({
             <iframe
               title={`Preview ${exportFile.filename}`}
               src={previewUrl}
-              className="h-[70vh] w-full bg-white"
+              className="h-[70vh] w-full bg-(--surface-solid)"
             />
           ) : exportFile ? (
             <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 px-6 text-center">
@@ -171,8 +171,8 @@ export function ReportExportPreview({
                 <FileSpreadsheet className="h-10 w-10" />
               </div>
               <div>
-                <p className="font-medium text-slate-900 dark:text-white">{exportFile.filename}</p>
-                <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                <p className="font-medium text-foreground">{exportFile.filename}</p>
+                <p className="mt-2 max-w-md text-sm text-muted">
                   Excel exports cannot be previewed in the browser. Download the file to open it in
                   Excel or another spreadsheet app.
                 </p>

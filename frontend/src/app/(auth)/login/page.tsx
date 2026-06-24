@@ -18,16 +18,16 @@ export default function LoginPage() {
     <div className=" min-h-screen ">
      
       <div className="flex items-center justify-center mt-50 pb-6">
-        <Card className="w-full max-w-md p-8 bg-#124397dd8h dark:bg-#124397dd8h rounded-2xl">
+        <Card className="w-full max-w-md p-8">
         <Image src="/assets/pgos_logo.png" alt="PGoS Roll Call System" width={200} height={200} className="py-6 mx-auto"/>
-          <p className="text-center font-semibold uppercase tracking-[0.2em] text-#df8811  text-2xl center py-6 mx-auto">
+          <p className="page-eyebrow text-center text-2xl py-6">
             Sign in
           </p>
         
-          <h2 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">
+          <h2 className="mt-3 text-3xl font-semibold text-foreground">
              PGoS Roll Call System
           </h2>
-          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-3 text-sm text-muted">
             Continue with your Microsoft institutional account to access dashboards, attendance workflows, and reports.
           </p>
           {error ? (

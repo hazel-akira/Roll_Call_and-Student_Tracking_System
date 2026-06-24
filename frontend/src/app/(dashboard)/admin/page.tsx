@@ -133,16 +133,16 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+        <p className="page-eyebrow">
           Administrative oversight
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">Operations and attendance analytics</h1>
+        <h1 className="page-title">Operations and attendance analytics</h1>
         {viewingAllSchools ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Showing data across all schools. Pick a single school in the header to focus on one campus.
           </p>
         ) : currentSchool ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Showing data for {currentSchool.name}. Use the school selector in the header to switch campus.
           </p>
         ) : null}
@@ -165,21 +165,21 @@ export default function AdminDashboardPage() {
       ) : null}
       <section className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-lg font-semibold">Present vs absent (last 7 days)</h2>
+          <h2 className="section-title">Present vs absent (last 7 days)</h2>
           <div className="mt-4 space-y-3">
             {dashboardLoading ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading trends…</p>
+              <p className="text-sm text-muted">Loading trends…</p>
             ) : null}
             {!dashboardLoading && trends.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No attendance data for the last 7 days.</p>
+              <p className="text-sm text-muted">No attendance data for the last 7 days.</p>
             ) : null}
             {trends.map((trend) => (
               <div key={trend.session_date}>
-                <div className="mb-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <div className="mb-1 flex items-center justify-between text-xs text-muted">
                   <span>{formatDate(trend.session_date)}</span>
                   <span>P: {trend.present} | A: {trend.absent}</span>
                 </div>
-                <div className="flex h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="flex h-2 overflow-hidden rounded-full bg-(--surface-muted)">
                   <div
                     className={`bg-emerald-500 ${trendWidthClass(trend.present, maxTrendValue)}`}
                   />
@@ -192,15 +192,15 @@ export default function AdminDashboardPage() {
           </div>
         </Card>
         <Card className="p-5">
-          <h2 className="text-lg font-semibold">Recent audit activity</h2>
+          <h2 className="section-title">Recent audit activity</h2>
           <div className="mt-4 space-y-3">
             {!dashboardLoading && (data?.recent_audit_logs?.length ?? 0) === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No recent audit activity.</p>
+              <p className="text-sm text-muted">No recent audit activity.</p>
             ) : null}
             {data?.recent_audit_logs?.map((log) => (
               <div key={log.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <p className="font-medium text-slate-900 dark:text-white">{log.description}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="font-medium text-foreground">{log.description}</p>
+                <p className="mt-1 text-sm text-muted">
                   {log.event_type} · {formatDate(log.created_at)}
                 </p>
               </div>
@@ -208,17 +208,17 @@ export default function AdminDashboardPage() {
           </div>
         </Card>
         <Card className="p-5 xl:col-span-2">
-          <h2 className="text-lg font-semibold">Dynamics sync exceptions</h2>
+          <h2 className="section-title">Dynamics sync exceptions</h2>
           <div className="mt-4 space-y-3">
             {!dashboardLoading && (data?.recent_sync_failures?.length ?? 0) === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No Dynamics sync failures.</p>
+              <p className="text-sm text-muted">No Dynamics sync failures.</p>
             ) : null}
             {data?.recent_sync_failures?.map((sync) => (
               <div key={sync.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <p className="font-medium text-slate-900 dark:text-white">
+                <p className="font-medium text-foreground">
                   Session #{sync.attendance_session_id}
                 </p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-muted">
                   {sync.error_message ?? "Sync failed"}
                 </p>
               </div>

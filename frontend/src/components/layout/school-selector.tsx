@@ -63,7 +63,7 @@ export function SchoolSelector() {
       <Building2 size={16} className="hidden text-(--color-accent-dark) sm:block" />
       <select
         aria-label="Select school"
-        className="h-9 max-w-[16rem] rounded-xl border border-[rgba(148,163,184,0.28)] bg-(--surface-solid) px-3 text-sm outline-none"
+        className="h-9 max-w-[16rem] field-control"
         value={selectValue}
         onChange={(event) => {
           void selectSchool(event.target.value);

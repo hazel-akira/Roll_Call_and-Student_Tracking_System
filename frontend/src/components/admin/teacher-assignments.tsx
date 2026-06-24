@@ -211,15 +211,15 @@ export function TeacherAssignments() {
   if (loading) {
     return (
       <Card className="p-5">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading teacher assignments...</p>
+        <p className="text-sm text-muted">Loading teacher assignments...</p>
       </Card>
     );
   }
 
   return (
     <Card className="p-5">
-      <h2 className="text-lg font-semibold">Teacher assignments</h2>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      <h2 className="section-title">Teacher assignments</h2>
+      <p className="mt-1 text-sm text-muted">
         Assign each teacher to one or more schools, then choose the classes and streams they teach.
         Teachers only see attendance and students for their assigned schools and classes.
       </p>
@@ -228,7 +228,7 @@ export function TeacherAssignments() {
       ) : null}
       <div className="mt-4 space-y-6">
         {teachers.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted">
             No teacher accounts yet. Teachers are created on first Microsoft sign-in.
           </p>
         ) : null}
@@ -242,8 +242,8 @@ export function TeacherAssignments() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium text-slate-900 dark:text-white">{teacher.name}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{teacher.email}</p>
+                  <p className="font-medium text-foreground">{teacher.name}</p>
+                  <p className="text-sm text-muted">{teacher.email}</p>
                 </div>
                 <Button
                   size="sm"
@@ -256,7 +256,7 @@ export function TeacherAssignments() {
               </div>
 
               <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   Schools
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -279,11 +279,11 @@ export function TeacherAssignments() {
               </div>
 
               <div className="mt-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   Classes & streams
                 </p>
                 {entry.schoolIds.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-muted">
                     Select at least one school to choose classes.
                   </p>
                 ) : (
@@ -294,19 +294,19 @@ export function TeacherAssignments() {
                     return (
                       <div
                         key={schoolId}
-                        className="rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50"
+                        className="rounded-lg border bg-(--surface-muted) p-3"
                       >
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                        <p className="text-sm font-medium text-foreground">
                           {school?.name ?? "School"}
                         </p>
                         {schoolClasses.length === 0 ? (
-                          <p className="mt-1 text-xs text-slate-500">No classes seeded for this school.</p>
+                          <p className="mt-1 text-xs text-muted">No classes seeded for this school.</p>
                         ) : (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {schoolClasses.map((item) => (
                               <label
                                 key={item.id}
-                                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
+                                className="flex cursor-pointer items-center gap-2 rounded-lg border bg-(--surface-solid) px-3 py-1.5 text-sm text-foreground"
                               >
                                 <input
                                   type="checkbox"

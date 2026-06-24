@@ -3,18 +3,23 @@
 namespace App\Http\Controllers\Students;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Students\StudentAttendanceReportRequest;
 use App\Http\Requests\Students\StudentIndexRequest;
 use App\Http\Resources\StudentResource;
 use App\Models\AttendanceRecord;
 use App\Models\Student;
+use App\Services\Reports\StudentAttendanceReportService;
 use App\Services\TenantService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class StudentController extends Controller
 {
     public function __construct(
         private readonly TenantService $tenantService,
+        private readonly StudentAttendanceReportService $studentAttendanceReportService,
     ) {
     }
 
@@ -102,7 +107,35 @@ class StudentController extends Controller
         ]);
     }
 
-    private function ensureStudentAccessible(Student $student, StudentIndexRequest $request): void
+    public function attendanceReport(
+        Student $student,
+        StudentAttendanceReportRequest $request,
+    ): JsonResponse|StreamedResponse {
+        $this->ensureStudentAccessible($student, $request);
+
+        $filters = $request->validated();
+        $report = $this->studentAttendanceReportService->build($student, $filters);
+
+        if (($filters['format'] ?? 'json') === 'pdf') {
+            $admission = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $student->admission_number) ?: 'student';
+            $fileName = sprintf('student-attendance-%s-%s.pdf', $admission, now()->format('Ymd'));
+
+            return response()->streamDownload(function () use ($report): void {
+                echo Pdf::loadView('reports.student-attendance-report', [
+                    'report' => $report,
+                    'generated_at' => now()->format('Y-m-d H:i'),
+                ])->output();
+            }, $fileName, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        }
+
+        return response()->json([
+            'data' => $report,
+        ]);
+    }
+
+    private function ensureStudentAccessible(Student $student, StudentIndexRequest|StudentAttendanceReportRequest $request): void
     {
         if (! $this->tenantService->shouldApplySchoolScope($request->user(), $request)) {
             return;

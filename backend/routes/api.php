@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('students', [StudentController::class, 'index']);
         Route::get('students/{student}', [StudentController::class, 'show']);
         Route::get('students/{student}/attendance-history', [StudentController::class, 'history']);
+        Route::get('students/{student}/attendance-report', [StudentController::class, 'attendanceReport']);
 
         Route::get('attendance-sessions', [AttendanceSessionController::class, 'index']);
         Route::post('attendance-sessions', [AttendanceSessionController::class, 'store'])->middleware('role:teacher,admin,ict_staff');

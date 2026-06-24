@@ -140,8 +140,8 @@ export function ReportExportsPanel({
       <Card className="p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Recent exports</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <h2 className="section-title">Recent exports</h2>
+            <p className="mt-1 text-sm text-muted">
               {pollForNewExport
                 ? "Generating export… this list refreshes automatically."
                 : "Click an export to preview it, then download when ready."}
@@ -158,9 +158,9 @@ export function ReportExportsPanel({
 
         <div className="mt-4 space-y-3">
           {loading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading exports…</p>
+            <p className="text-sm text-muted">Loading exports…</p>
           ) : exports.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-muted">
               No exports yet. Queue an Excel or PDF export above.
             </p>
           ) : (
@@ -185,10 +185,10 @@ export function ReportExportsPanel({
                   }}
                 >
                   <div>
-                    <p className="font-medium text-slate-900 dark:text-white">
+                    <p className="font-medium text-foreground">
                       {notification.title}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 text-sm text-muted">
                       {format} · {formatDate(notification.sent_at ?? notification.read_at)}
                     </p>
                   </div>

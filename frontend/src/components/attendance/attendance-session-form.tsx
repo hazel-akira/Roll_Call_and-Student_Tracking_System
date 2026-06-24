@@ -146,23 +146,21 @@ export function AttendanceSessionForm({
   }
 
   return (
-    <Card className="p-5 text-sm text-slate-500 dark:text-slate-400">
+    <Card className="p-5 text-sm text-muted">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 text-white  dark:text-white">
-            Create attendance session
-          </h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h3 className="section-title">Create attendance session</h3>
+          <p className="mt-1 text-sm text-muted">
             Forms and streams load from Dataverse for the school selected in the header.
           </p>
           {formStreamsPayload?.school_name ? (
-            <p className="mt-1 text-xs text-sky-700 dark:text-sky-300">
+            <p className="mt-1 text-xs text-(--color-primary)">
               Dataverse school: {formStreamsPayload.school_name}
             </p>
           ) : null}
         </div>
         {formsLoading ? (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-muted">
             <Spinner />
             Loading forms…
           </div>
@@ -178,7 +176,7 @@ export function AttendanceSessionForm({
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <select
           aria-label="Select form or grade"
-          className="rounded-xl border  px-3 py-2.5 text-sm outline-none dark:border-slate-700"
+          className="field-control"
           value={selectedGradeLevel}
           disabled={!schoolId || formsLoading || gradeLevels.length === 0}
           onChange={(event) => applyGrade(event.target.value)}
@@ -200,7 +198,7 @@ export function AttendanceSessionForm({
         </select>
         <select
           aria-label="Select stream"
-          className="rounded-xl border border-slate-200  dark:bg-slate-900 px-3 py-2.5 text-sm outline-none dark:border-slate-700"
+          className="field-control"
           value={selectedStreamKey}
           disabled={!selectedGradeLevel || streamOptions.length === 0}
           onChange={(event) => setSelectedStreamKey(event.target.value)}
@@ -225,7 +223,7 @@ export function AttendanceSessionForm({
         </select>
         <input
           aria-label="Roll call session title"
-          className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+          className="field-control"
           placeholder="Session title (e.g. Morning Roll Call)"
           value={payload.title}
           onChange={(event) =>
@@ -235,7 +233,7 @@ export function AttendanceSessionForm({
         <input
           type="date"
           aria-label="Roll call date"
-          className="rounded-xl border border-slate-200  px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+          className="field-control"
           value={payload.session_date}
           onChange={(event) =>
             setPayload((current) => ({
@@ -246,7 +244,7 @@ export function AttendanceSessionForm({
         />
         <input
           aria-label="Selected class mapping"
-          className="rounded-xl border border-slate-200  px-3 py-2.5 text-sm text-#df8811 outline-none dark:border-slate-400 dark:bg-slate-900 dark:text-green-600"
+          className="field-control text-(--color-primary)"
           value={
             selectedStreamOption
               ? `${selectedGradeLevel} · ${selectedStreamOption.label ?? selectedStreamOption.stream}`
@@ -255,7 +253,7 @@ export function AttendanceSessionForm({
           placeholder="Class mapping"
           readOnly
         />
-        <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
+        <div className="flex items-center text-sm text-muted">
           {studentsLoading
             ? "Loading students from Dataverse…"
             : selectedStreamOption
@@ -268,7 +266,7 @@ export function AttendanceSessionForm({
         </div>
         <textarea
           aria-label="Roll call notes"
-          className="min-h-28 rounded-xl border border-slate-200  px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 md:col-span-2"
+          className="min-h-28 field-control md:col-span-2"
           placeholder="Optional notes"
           value={payload.notes}
           onChange={(event) =>

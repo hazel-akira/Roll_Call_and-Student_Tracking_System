@@ -118,12 +118,12 @@ export default function ClassStreamsPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+          <p className="page-eyebrow">
             Class streams
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">Browse classes and streams with students</h1>
+          <h1 className="page-title">Browse classes and streams with students</h1>
           {currentSchool ? (
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-sm text-muted">
               Loads every form and stream from Dataverse for {currentSchool.name}, then builds a
               page for each group that has students.
             </p>
@@ -133,7 +133,7 @@ export default function ClassStreamsPage() {
             </p>
           )}
           {loadedAt ? (
-            <p className="mt-1 text-xs text-slate-500">Last loaded: {loadedAt}</p>
+            <p className="mt-1 text-xs text-muted">Last loaded: {loadedAt}</p>
           ) : null}
         </div>
         <Button
@@ -149,10 +149,10 @@ export default function ClassStreamsPage() {
           <div className="flex items-center gap-3">
             <Spinner />
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-900 dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 Loading students ({progress.done} of {progress.total})
               </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-(--surface-muted)">
                 <div
                   className="h-full rounded-full bg-sky-500 transition-all"
                   style={{ width: `${progressPercent}%` }}
@@ -171,7 +171,7 @@ export default function ClassStreamsPage() {
 
       {pages.length > 0 ? (
         <>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-muted">
             {pages.length} class/stream {pages.length === 1 ? "page" : "pages"} with students ·{" "}
             {pages.reduce((sum, page) => sum + page.studentCount, 0)} students total
           </p>
@@ -182,7 +182,7 @@ export default function ClassStreamsPage() {
           </div>
         </>
       ) : !loading && !error && schoolId ? (
-        <Card className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <Card className="p-8 text-center text-sm text-muted">
           Click &quot;Load all classes & streams&quot; to fetch students from Dataverse and build
           pages for each form and stream that has enrolments.
         </Card>

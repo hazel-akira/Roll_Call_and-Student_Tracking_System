@@ -1,28 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { StudentAttendanceReportPanel } from "@/components/students/student-attendance-report-panel";
 import { StudentHistoryCard } from "@/components/students/student-history-card";
-import { StudentList } from "@/components/students/student-list";
+import { StudentProfileCard } from "@/components/students/student-profile-card";
+import { StudentSearchForm } from "@/components/students/student-search-form";
 import { Card } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/client";
+import { searchStudentByAdmission } from "@/lib/students/attendance-report";
 import { useSchool } from "@/lib/tenant/school-context";
 import type { Student } from "@/types";
 
 type HistoryResponse = {
   student: Student;
-  history: { data: Array<{
-    id: number;
-    status: string;
-    remark?: string | null;
-    marked_at?: string | null;
-    session: {
+  history: {
+    data: Array<{
       id: number;
-      title: string;
-      session_date: string;
-      class: string;
-      subject: string;
-    };
-  }> };
+      status: string;
+      remark?: string | null;
+      marked_at?: string | null;
+      session: {
+        id: number;
+        title: string;
+        session_date: string;
+        class: string;
+        subject: string;
+      };
+    }>;
+  };
 };
 
 function asArray<T>(value: unknown): T[] {
@@ -30,64 +35,87 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export default function StudentsPage() {
-  const { currentSchool, revision } = useSchool();
-  const [query, setQuery] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const { currentSchool } = useSchool();
+  const [admissionQuery, setAdmissionQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
   const [history, setHistory] = useState<HistoryResponse["history"]["data"]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  useEffect(() => {
-    void apiClient
-      .get<{ data: { data: Student[] } }>("/students", { params: { q: query, per_page: 100 } })
-      .then((response) => {
-        setStudents(asArray<Student>(response.data?.data?.data));
-      })
-      .catch(() => {
-        setStudents([]);
-      });
-  }, [query, revision]);
+  async function loadHistory(selectedStudent: Student) {
+    setHistoryLoading(true);
 
-  async function loadHistory(student: Student) {
-    setSelectedStudent(student);
     try {
       const response = await apiClient.get<HistoryResponse>(
-        `/students/${student.id}/attendance-history`,
+        `/students/${selectedStudent.id}/attendance-history`,
       );
       setHistory(asArray<HistoryResponse["history"]["data"][number]>(response.data?.history?.data));
     } catch {
       setHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
+  }
+
+  async function handleSearch() {
+    setSearching(true);
+    setSearchError(null);
+    setStudent(null);
+    setHistory([]);
+
+    const result = await searchStudentByAdmission(admissionQuery);
+    setSearching(false);
+
+    if (result.error) {
+      setSearchError(result.error);
+      return;
+    }
+
+    if (!result.student) {
+      return;
+    }
+
+    setStudent(result.student);
+    await loadHistory(result.student);
   }
 
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
-          Student tracking
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold">Search attendance history and student records</h1>
+        <p className="page-eyebrow">Student tracking</p>
+        <h1 className="page-title">Search students and generate attendance reports</h1>
         {currentSchool ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Students enrolled at {currentSchool.name}
-          </p>
+          <p className="mt-2 text-sm text-muted">Students enrolled at {currentSchool.name}</p>
         ) : null}
       </section>
-      <Card className="p-4">
-        <input
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
-          placeholder="Search by admission number, name, or email"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </Card>
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <StudentList
-          students={students}
-          selectedStudentId={selectedStudent?.id ?? null}
-          onSelect={(student) => void loadHistory(student)}
-        />
-        <StudentHistoryCard student={selectedStudent} history={history} />
-      </div>
+
+      <StudentSearchForm
+        value={admissionQuery}
+        loading={searching}
+        error={searchError}
+        onChange={setAdmissionQuery}
+        onSearch={() => void handleSearch()}
+      />
+
+      {!student ? (
+        <Card className="p-8 text-center text-sm text-muted">
+          Enter an admission number and click Search to view a student profile, attendance history,
+          and PDF report.
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <StudentProfileCard student={student} />
+          <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+            <StudentHistoryCard
+              student={student}
+              history={history}
+              loading={historyLoading}
+            />
+            <StudentAttendanceReportPanel student={student} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

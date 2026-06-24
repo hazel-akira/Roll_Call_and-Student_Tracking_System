@@ -10,12 +10,10 @@ export function SummaryCard({
   helper?: string;
 }) {
   return (
-    <Card className="p-5 bg-#13365F">
-      <p className="text-sm font-medium text-white dark:text-white">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{value}</p>
-      {helper ? (
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{helper}</p>
-      ) : null}
+    <Card className="p-5">
+      <p className="text-sm font-medium text-(--color-primary)">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
+      {helper ? <p className="mt-2 text-sm text-muted">{helper}</p> : null}
     </Card>
   );
 }

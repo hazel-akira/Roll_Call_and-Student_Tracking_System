@@ -26,7 +26,7 @@ export function ReportFilters({
         type="date"
         aria-label="From date"
         title="From date"
-        className="rounded-xl border border-slate-200  px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+        className="field-control"
         value={value.from}
         onChange={(event) => onChange({ ...value, from: event.target.value })}
       />
@@ -34,7 +34,7 @@ export function ReportFilters({
         type="date"
         aria-label="To date"
         title="To date"
-        className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+        className="field-control"
         value={value.to}
         onChange={(event) => onChange({ ...value, to: event.target.value })}
       />
@@ -42,7 +42,7 @@ export function ReportFilters({
       <select
         aria-label="Class filter"
         title="Class filter"
-        className="rounded-xl border border-slate-200  px-3 py-2.5 text-sm outline-none dark:border-slate-700 "
+        className="field-control "
         value={value.class_id}
         onChange={(event) => onChange({ ...value, class_id: event.target.value })}
       >

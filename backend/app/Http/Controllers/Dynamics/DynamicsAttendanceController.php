@@ -58,7 +58,28 @@ class DynamicsAttendanceController extends Controller
 
             usort($gradeLevels, fn (string $a, string $b) => strcmp($a, $b));
 
+            $warning = null;
+            if ($streams === []) {
+                $probe = $this->dynamicsService->probeSchoolRooms($schoolName);
+                if (! $probe['token_ok']) {
+                    return response()->json([
+                        'message' => $probe['token_error'] ?? 'Unable to connect to Dataverse. Check DYNAMICS_* environment variables.',
+                        'data' => [
+                            'grade_levels' => [],
+                            'streams' => [],
+                            'school_name' => $schoolName,
+                        ],
+                    ], 503);
+                }
+
+                $samples = $probe['sample_school_names'];
+                $warning = $samples === []
+                    ? "No class streams (ses_rooms) were returned from Dataverse for \"{$schoolName}\". Confirm DYNAMICS_BASE_URL points at the correct environment."
+                    : "No class streams found for \"{$schoolName}\". Dataverse has streams for: ".implode(', ', array_slice($samples, 0, 5)).'. Update schools.dynamics_names or the school name in Dataverse.';
+            }
+
             return response()->json([
+                'message' => $warning,
                 'data' => [
                     'grade_levels' => $gradeLevels,
                     'streams' => $streams,

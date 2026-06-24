@@ -1122,11 +1122,12 @@ class DynamicsService
         }
 
         $entity = config('dynamics.entities.rooms', 'ses_rooms');
-        $escaped = str_replace("'", "''", $schoolName);
-        $filters = [
-            "ses_schoolname eq '{$escaped}' and statecode eq 0",
-            "ses_schoolname eq '{$escaped}'",
-        ];
+        $filters = [];
+        foreach ($this->schoolNameVariants($schoolName) as $variant) {
+            $escaped = str_replace("'", "''", $variant);
+            $filters[] = "ses_schoolname eq '{$escaped}' and statecode eq 0";
+            $filters[] = "ses_schoolname eq '{$escaped}'";
+        }
 
         foreach ($filters as $filter) {
             $rows = $this->get($entity, [
@@ -1136,11 +1137,77 @@ class DynamicsService
             ]);
             if ($rows !== []) {
                 usort($rows, fn ($a, $b) => strcmp((string) ($a['ses_room'] ?? ''), (string) ($b['ses_room'] ?? '')));
+
                 return $rows;
             }
         }
 
         return [];
+    }
+
+    /**
+     * @return array{
+     *     enabled: bool,
+     *     token_ok: bool,
+     *     token_error: string|null,
+     *     rooms_for_school: int,
+     *     sample_school_names: list<string>
+     * }
+     */
+    public function probeSchoolRooms(?string $schoolName = null, bool $freshToken = false): array
+    {
+        if (! $this->isEnabled()) {
+            return [
+                'enabled' => false,
+                'token_ok' => false,
+                'token_error' => 'Dynamics integration is not enabled or credentials are missing.',
+                'rooms_for_school' => 0,
+                'sample_school_names' => [],
+            ];
+        }
+
+        if ($freshToken) {
+            $tokenResult = $this->requestAccessToken(fresh: true);
+        } else {
+            $token = $this->getAccessToken();
+            $tokenResult = $token
+                ? ['success' => true]
+                : $this->requestAccessToken();
+        }
+        if (! ($tokenResult['success'] ?? false)) {
+            return [
+                'enabled' => true,
+                'token_ok' => false,
+                'token_error' => is_string($tokenResult['error'] ?? null) ? $tokenResult['error'] : 'Unable to obtain access token.',
+                'rooms_for_school' => 0,
+                'sample_school_names' => [],
+            ];
+        }
+
+        $rooms = $schoolName ? $this->getRoomsBySchool($schoolName) : $this->getActiveRooms();
+        $sampleNames = [];
+        if ($rooms === []) {
+            $entity = config('dynamics.entities.rooms', 'ses_rooms');
+            $sampleRows = $this->get($entity, [
+                '$select' => 'ses_schoolname',
+                '$filter' => 'statecode eq 0',
+                '$top' => 25,
+            ]);
+            foreach ($sampleRows as $row) {
+                $name = trim((string) ($row['ses_schoolname'] ?? ''));
+                if ($name !== '' && ! in_array($name, $sampleNames, true)) {
+                    $sampleNames[] = $name;
+                }
+            }
+        }
+
+        return [
+            'enabled' => true,
+            'token_ok' => true,
+            'token_error' => null,
+            'rooms_for_school' => count($rooms),
+            'sample_school_names' => $sampleNames,
+        ];
     }
 
     public function getStudentsByRoom(?string $roomId = null, ?string $roomName = null, ?string $schoolName = null): array

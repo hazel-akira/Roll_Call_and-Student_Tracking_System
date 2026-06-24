@@ -31,10 +31,12 @@ export async function fetchFormStreamsForSchool(
   }
 
   try {
-    const response = await apiClient.get<{ data: FormStreamsPayload }>(
-      "/dynamics/attendance/form-streams",
-      { params: { school_id: schoolId } },
-    );
+    const response = await apiClient.get<{
+      data: FormStreamsPayload;
+      message?: string;
+    }>("/dynamics/attendance/form-streams", {
+      params: { school_id: schoolId },
+    });
 
     const raw = response.data?.data;
     const streams = asArray<AttendanceFormStream>(raw?.streams ?? raw);
@@ -50,6 +52,9 @@ export async function fetchFormStreamsForSchool(
             ),
           ).sort((a, b) => a.localeCompare(b));
 
+    const warning =
+      typeof response.data?.message === "string" ? response.data.message : null;
+
     return {
       payload: {
         grade_levels: gradeLevels,
@@ -57,7 +62,10 @@ export async function fetchFormStreamsForSchool(
         school_name: raw?.school_name ?? null,
         local_school: raw?.local_school,
       },
-      error: null,
+      error:
+        gradeLevels.length === 0 && warning
+          ? warning
+          : null,
     };
   } catch (error) {
     if (isAxiosError(error) && error.response?.data) {

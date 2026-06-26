@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Students;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Students\StudentAttendanceReportRequest;
 use App\Http\Requests\Students\StudentIndexRequest;
+use App\Http\Requests\Students\StudentLookupRequest;
 use App\Http\Resources\StudentResource;
 use App\Models\AttendanceRecord;
+use App\Models\School;
 use App\Models\Student;
+use App\Services\DynamicsService;
+use App\Services\Integrations\DynamicsStudentSyncService;
 use App\Services\Reports\StudentAttendanceReportService;
 use App\Services\TenantService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +24,8 @@ class StudentController extends Controller
     public function __construct(
         private readonly TenantService $tenantService,
         private readonly StudentAttendanceReportService $studentAttendanceReportService,
+        private readonly DynamicsService $dynamicsService,
+        private readonly DynamicsStudentSyncService $dynamicsStudentSyncService,
     ) {
     }
 
@@ -65,6 +71,105 @@ class StudentController extends Controller
 
         return response()->json([
             'data' => StudentResource::collection($students),
+        ]);
+    }
+
+    public function lookup(StudentLookupRequest $request): JsonResponse
+    {
+        $admissionNumber = trim((string) $request->validated('admission_number'));
+        $schoolId = $request->validated('school_id') ?? $this->tenantService->effectiveSchoolId($request);
+
+        $localQuery = $this->tenantService
+            ->scopeViaClassSchool(Student::query(), $request)
+            ->with(['classRoom.school'])
+            ->where(function ($query) use ($admissionNumber): void {
+                $query
+                    ->where('admission_number', $admissionNumber)
+                    ->orWhere('admission_number', 'like', '%'.$admissionNumber);
+            });
+
+        $localMatches = $localQuery->orderBy('last_name')->get();
+        $localStudent = $localMatches->first(function (Student $student) use ($admissionNumber): bool {
+            return strcasecmp($student->admission_number, $admissionNumber) === 0;
+        }) ?? ($localMatches->count() === 1 ? $localMatches->first() : null);
+
+        if ($localStudent) {
+            return response()->json([
+                'data' => StudentResource::make($localStudent),
+                'meta' => ['source' => 'local'],
+            ]);
+        }
+
+        if ($localMatches->count() > 1) {
+            return response()->json([
+                'message' => "Multiple local students matched \"{$admissionNumber}\". Use the full admission number.",
+            ], 422);
+        }
+
+        if (! $this->dynamicsService->isEnabled()) {
+            return response()->json([
+                'message' => "No student found with admission number \"{$admissionNumber}\".",
+            ], 404);
+        }
+
+        if ($schoolId === null) {
+            return response()->json([
+                'message' => 'Select a school in the header before searching Dataverse.',
+            ], 422);
+        }
+
+        $school = School::query()->find($schoolId);
+        if (! $school) {
+            return response()->json([
+                'message' => 'Selected school was not found.',
+            ], 404);
+        }
+
+        $dataverseSchoolName = $this->dynamicsService->resolveDataverseSchoolName((string) $school->id);
+        $dynamicsRows = $this->dynamicsService->findStudentsByAdmissionNumber($admissionNumber, $dataverseSchoolName);
+
+        if ($dynamicsRows === []) {
+            return response()->json([
+                'message' => "No student found in Dataverse for admission number \"{$admissionNumber}\" at {$school->name}.",
+            ], 404);
+        }
+
+        $dynamicsRow = collect($dynamicsRows)->first(function (array $row) use ($admissionNumber): bool {
+            $candidate = trim((string) ($row['admission_number'] ?? ''));
+
+            return strcasecmp($candidate, $admissionNumber) === 0;
+        }) ?? ($dynamicsRows[0] ?? null);
+
+        if (! is_array($dynamicsRow)) {
+            return response()->json([
+                'message' => "No student found in Dataverse for admission number \"{$admissionNumber}\".",
+            ], 404);
+        }
+
+        if (count($dynamicsRows) > 1 && collect($dynamicsRows)->contains(function (array $row) use ($admissionNumber): bool {
+            return strcasecmp(trim((string) ($row['admission_number'] ?? '')), $admissionNumber) === 0;
+        }) === false) {
+            return response()->json([
+                'message' => "Multiple students in Dataverse matched \"{$admissionNumber}\". Use the full admission number.",
+            ], 422);
+        }
+
+        try {
+            $student = $this->dynamicsStudentSyncService->upsertStudentFromDynamics($dynamicsRow, $school);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Student was found in Dataverse but could not be synced locally.',
+            ], 503);
+        }
+
+        return response()->json([
+            'data' => StudentResource::make($student),
+            'meta' => [
+                'source' => 'dynamics',
+                'dataverse_school' => $dynamicsRow['school_name'] ?? $dataverseSchoolName,
+            ],
         ]);
     }
 

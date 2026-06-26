@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function (): void {
         Route::put('teachers/{user}/schools', [TeacherController::class, 'syncSchools'])->middleware('role:admin,ict_staff');
         Route::put('teachers/{user}/assignments', [TeacherController::class, 'syncAssignments'])->middleware('role:admin,ict_staff');
         Route::get('students', [StudentController::class, 'index']);
+        Route::get('students/lookup', [StudentController::class, 'lookup']);
         Route::get('students/{student}', [StudentController::class, 'show']);
         Route::get('students/{student}/attendance-history', [StudentController::class, 'history']);
         Route::get('students/{student}/attendance-report', [StudentController::class, 'attendanceReport']);

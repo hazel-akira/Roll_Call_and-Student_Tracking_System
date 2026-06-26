@@ -48,9 +48,6 @@ export type StudentAttendanceReportFile = {
   filename: string;
 };
 
-function asArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : [];
-}
 
 function parseFilename(contentDisposition: string | undefined, fallback: string): string {
   if (!contentDisposition) {
@@ -64,48 +61,52 @@ function parseFilename(contentDisposition: string | undefined, fallback: string)
 
 export async function searchStudentByAdmission(
   admissionNumber: string,
-): Promise<{ student: Student | null; error: string | null }> {
+  schoolId?: string | null,
+): Promise<{ student: Student | null; source: "local" | "dynamics" | null; error: string | null }> {
   const query = admissionNumber.trim();
 
   if (!query) {
-    return { student: null, error: "Enter an admission number to search." };
+    return { student: null, source: null, error: "Enter an admission number to search." };
   }
 
   try {
-    const response = await apiClient.get<{ data: { data: Student[] } }>("/students", {
-      params: { q: query, per_page: 25 },
+    const response = await apiClient.get<{
+      data: Student;
+      meta?: { source?: "local" | "dynamics"; dataverse_school?: string };
+      message?: string;
+    }>("/students/lookup", {
+      params: {
+        admission_number: query,
+        ...(schoolId ? { school_id: schoolId } : {}),
+      },
     });
 
-    const students = asArray<Student>(response.data?.data?.data);
-    const exact = students.find(
-      (student) => student.admission_number.toLowerCase() === query.toLowerCase(),
-    );
-
-    if (exact) {
-      return { student: exact, error: null };
-    }
-
-    if (students.length === 1) {
-      return { student: students[0], error: null };
-    }
-
-    if (students.length > 1) {
-      return {
-        student: null,
-        error: `Multiple students matched "${query}". Use the full admission number.`,
-      };
-    }
-
     return {
-      student: null,
-      error: `No student found with admission number "${query}".`,
+      student: response.data.data,
+      source: response.data.meta?.source ?? "local",
+      error: null,
     };
   } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 401) {
-      return { student: null, error: "Your session expired. Sign in again." };
+    if (isAxiosError(error) && error.response?.data) {
+      const data = error.response.data;
+      const message =
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
+          ? data.message
+          : null;
+
+      if (message) {
+        return { student: null, source: null, error: message };
+      }
     }
 
-    return { student: null, error: "Unable to search students. Try again." };
+    if (isAxiosError(error) && error.response?.status === 401) {
+      return { student: null, source: null, error: "Your session expired. Sign in again." };
+    }
+
+    return { student: null, source: null, error: "Unable to search students. Try again." };
   }
 }
 

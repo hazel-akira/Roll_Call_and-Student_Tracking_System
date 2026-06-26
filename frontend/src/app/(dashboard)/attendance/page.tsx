@@ -621,7 +621,7 @@ export default function AttendancePage() {
         </Card>
       ) : null}
       {saveSuccess ? (
-        <Card className="border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+        <Card className="border-emerald-500/30 bg-emerald-50 px-4 py-3 text-sm text-white dark:border-white/30 dark:bg-emerald-500/10 dark:text-emerald-200">
           {saveSuccess}
         </Card>
       ) : null}

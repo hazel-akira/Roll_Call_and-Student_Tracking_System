@@ -38,7 +38,7 @@ export function StudentSearchForm({
             }}
           />
           <p className="mt-2 text-xs text-muted">
-            Search by admission number, then generate an attendance report for that student.
+            Searches the local database first, then Dataverse (ses_students) for the selected school.
           </p>
         </div>
         <Button type="button" disabled={loading || !value.trim()} onClick={onSearch}>

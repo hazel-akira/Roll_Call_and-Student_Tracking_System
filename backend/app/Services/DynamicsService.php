@@ -524,6 +524,78 @@ class DynamicsService
         return $mapped;
     }
 
+    /**
+     * Find students in Dataverse (ses_students) by admission number.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findStudentsByAdmissionNumber(string $admissionNo, ?string $schoolName = null): array
+    {
+        $admissionNo = trim($admissionNo);
+        if ($admissionNo === '' || ! $this->isEnabled()) {
+            return [];
+        }
+
+        $entity = config('dynamics.entities.student', 'ses_students');
+        $admCol = config('dynamics.student_admission_no_column', 'piu_admissionnumber');
+        $cols = config('dynamics.student_columns', []);
+        $selectFields = implode(',', array_unique($this->studentSelectFields($cols)));
+        $escapedAdm = str_replace("'", "''", $admissionNo);
+
+        $clauses = ['statecode eq 0'];
+        if ($schoolName !== null && trim($schoolName) !== '') {
+            $schoolFilters = [];
+            foreach ($this->schoolNameVariants($schoolName) as $variant) {
+                $schoolFilters[] = config('dynamics.student_school_name_column', 'ses_schoolname')
+                    ." eq '".str_replace("'", "''", $variant)."'";
+            }
+            if ($schoolFilters !== []) {
+                $clauses[] = '('.implode(' or ', $schoolFilters).')';
+            }
+        }
+
+        $baseFilter = implode(' and ', $clauses);
+        $admissionFilters = [
+            "{$admCol} eq '{$escapedAdm}'",
+            "contains({$admCol},'{$escapedAdm}')",
+        ];
+
+        $rows = [];
+        foreach ($admissionFilters as $admissionFilter) {
+            $rows = $this->get($entity, [
+                '$select' => $selectFields,
+                '$filter' => $baseFilter.' and '.$admissionFilter,
+                '$top' => 25,
+            ]);
+
+            if ($rows !== []) {
+                break;
+            }
+        }
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $classNameCol = config('dynamics.student_class_name_column', 'ses_classname');
+        $schoolNameCol = config('dynamics.student_school_name_column', 'ses_schoolname');
+        $gradeCol = config('dynamics.student_grade_level_column', 'ses_gradelevel');
+        $mapped = $this->mapStudentsToApp($rows);
+
+        return array_map(function (array $student, array $row) use ($classNameCol, $schoolNameCol, $gradeCol): array {
+            $gradeCode = $row[$gradeCol] ?? null;
+            $gradeLabel = $gradeCode !== null && $gradeCode !== ''
+                ? ($this->getGradeLevelOptionLabels()[(int) $gradeCode] ?? null)
+                : null;
+
+            return array_merge($student, [
+                'school_name' => $row[$schoolNameCol] ?? null,
+                'grade_level' => $gradeLabel,
+                'class_name' => $row[$classNameCol] ?? null,
+            ]);
+        }, $mapped, $rows);
+    }
+
     public function getContactByName(string $firstName, string $lastName): ?array
     {
         $firstName = trim($firstName);

@@ -35,10 +35,11 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export default function StudentsPage() {
-  const { currentSchool } = useSchool();
+  const { currentSchool, schoolId } = useSchool();
   const [admissionQuery, setAdmissionQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchSource, setSearchSource] = useState<"local" | "dynamics" | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
   const [history, setHistory] = useState<HistoryResponse["history"]["data"]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -61,10 +62,11 @@ export default function StudentsPage() {
   async function handleSearch() {
     setSearching(true);
     setSearchError(null);
+    setSearchSource(null);
     setStudent(null);
     setHistory([]);
 
-    const result = await searchStudentByAdmission(admissionQuery);
+    const result = await searchStudentByAdmission(admissionQuery, schoolId);
     setSearching(false);
 
     if (result.error) {
@@ -77,6 +79,7 @@ export default function StudentsPage() {
     }
 
     setStudent(result.student);
+    setSearchSource(result.source);
     await loadHistory(result.student);
   }
 
@@ -105,6 +108,11 @@ export default function StudentsPage() {
         </Card>
       ) : (
         <div className="space-y-6">
+          {searchSource === "dynamics" ? (
+            <p className="rounded-lg border border-sky-300/60 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100">
+              Student loaded from Dataverse and synced locally for {currentSchool?.name ?? "this school"}.
+            </p>
+          ) : null}
           <StudentProfileCard student={student} />
           <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
             <StudentHistoryCard

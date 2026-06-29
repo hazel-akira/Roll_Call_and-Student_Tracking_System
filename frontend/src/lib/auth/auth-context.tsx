@@ -28,7 +28,9 @@ type AuthContextValue = {
   tokens: TokenSet | null;
   loading: boolean;
   error: string | null;
+  googleSignInEnabled: boolean;
   login: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -205,6 +207,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applySession, completeMicrosoftExchange, refreshProfile, refreshTokenPair, resetSession]);
 
+  const googleSignInEnabled = false;
+
   const login = useCallback(async () => {
     setError(null);
 
@@ -213,6 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (loginError) {
       setError(getAuthErrorMessage(loginError));
     }
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    setError("Google sign-in is not configured.");
   }, []);
 
   const logout = useCallback(async () => {
@@ -266,11 +274,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tokens,
       loading,
       error,
+      googleSignInEnabled,
       login,
+      loginWithGoogle,
       logout,
       refreshProfile,
     }),
-    [error, loading, login, logout, refreshProfile, tokens, user],
+    [error, googleSignInEnabled, loading, login, loginWithGoogle, logout, refreshProfile, tokens, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

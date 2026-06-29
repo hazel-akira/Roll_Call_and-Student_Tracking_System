@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/auth-context";
 
 export default function LoginPage() {
-  const { login, loading, error } = useAuth();
+  const { login, loginWithGoogle, googleSignInEnabled, loading, error } = useAuth();
   const safeLoading = useSyncExternalStore(
     () => () => {},
     () => loading,
@@ -28,7 +28,7 @@ export default function LoginPage() {
              PGoS Roll Call System
           </h2>
           <p className="mt-3 text-sm text-muted">
-            Continue with your Microsoft institutional account to access dashboards, attendance workflows, and reports.
+            Continue with your Microsoft institutional account or Google account to access dashboards, attendance workflows, and reports.
           </p>
           {error ? (
             <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
@@ -43,6 +43,17 @@ export default function LoginPage() {
           >
             {safeLoading ? "Preparing sign-in..." : "Continue with Microsoft"}
           </Button>
+          {googleSignInEnabled ? (
+            <Button
+              className="mt-3 w-full"
+              size="lg"
+              variant="outline"
+              onClick={() => void loginWithGoogle()}
+              disabled={safeLoading}
+            >
+              {safeLoading ? "Preparing sign-in..." : "Continue with Google"}
+            </Button>
+          ) : null}
         </Card>
       </div>
     </div>

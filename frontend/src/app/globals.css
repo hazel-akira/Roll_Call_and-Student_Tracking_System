@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --color-primary: #df8811;
   --color-primary-deep: #0d3158;
@@ -107,10 +109,16 @@ body {
   }
 
   .list-row {
-    transition: background-color 150ms ease;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
   }
 
-  .list-row:hover {
+  .list-row:hover:not(.list-row-selected) {
     background: var(--surface-muted);
+  }
+
+  .list-row-selected,
+  .list-row-selected:hover {
+    background: color-mix(in srgb, var(--color-accent) 14%, var(--surface-solid));
+    box-shadow: inset 3px 0 0 var(--color-accent);
   }
 }

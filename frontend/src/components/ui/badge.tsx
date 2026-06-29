@@ -10,9 +10,11 @@ const badgeStyles: Record<string, string> = {
   late: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   excused:
     "bg-(--surface-muted) text-foreground",
-  open: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+  open: "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200",
   closed:
     "bg-(--surface-muted) text-foreground",
+  pending:
+    "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200",
   queued:
     "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
   failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",

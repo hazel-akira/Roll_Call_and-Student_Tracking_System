@@ -502,16 +502,16 @@ export default function AttendancePage() {
       ) : null}
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card className="overflow-hidden">
-          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+          <div className="border-b px-5 py-4">
             <h2 className="section-title">Attendance sessions</h2>
           </div>
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="divide-y">
             {sessions.map((session) => (
               <button
                 key={session.id}
                 type="button"
                 className={`w-full px-5 py-4 text-left transition list-row ${
-                  selectedSessionId === session.id ? "bg-sky-50 dark:bg-sky-500/10" : ""
+                  selectedSessionId === session.id ? "list-row-selected" : ""
                 }`}
                 onClick={() => handleSelectSession(session)}
               >

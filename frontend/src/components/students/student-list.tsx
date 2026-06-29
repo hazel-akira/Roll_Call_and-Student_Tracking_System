@@ -16,15 +16,15 @@ export function StudentList({
 
   return (
     <Card className="overflow-hidden">
-      <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+      <div className="border-b px-5 py-4">
         <h3 className="section-title">Students</h3>
       </div>
-      <div className="divide-y divide-slate-200 dark:divide-slate-800">
+      <div className="divide-y">
         {safeStudents.map((student) => (
           <button
             key={student.id}
             className={`w-full px-5 py-4 text-left transition list-row ${
-              selectedStudentId === student.id ? "bg-sky-50 dark:bg-sky-500/10" : ""
+              selectedStudentId === student.id ? "list-row-selected" : ""
             }`}
             onClick={() => onSelect(student)}
           >

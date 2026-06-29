@@ -12,6 +12,7 @@ import {
 } from "@/lib/reports/download-export";
 import { formatDate } from "@/lib/utils";
 import type { NotificationItem } from "@/types";
+import { PdfDocumentPreview } from "@/components/reports/pdf-document-preview";
 
 export function ReportExportPreview({
   notification,
@@ -160,10 +161,17 @@ export function ReportExportPreview({
               </p>
             </div>
           ) : exportFile && canPreviewReportExport(exportFile.format) && previewUrl ? (
-            <iframe
+            <PdfDocumentPreview
+              previewUrl={previewUrl}
+              file={{
+                blob: exportFile.blob,
+                filename: exportFile.filename,
+                mimeType: exportFile.mimeType,
+              }}
               title={`Preview ${exportFile.filename}`}
-              src={previewUrl}
               className="h-[70vh] w-full bg-(--surface-solid)"
+              onDownload={handleDownload}
+              downloading={downloading}
             />
           ) : exportFile ? (
             <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 px-6 text-center">

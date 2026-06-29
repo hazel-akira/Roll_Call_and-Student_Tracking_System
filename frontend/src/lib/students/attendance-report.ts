@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import { apiClient } from "@/lib/api/client";
+import { downloadBlobFile } from "@/lib/reports/blob-file";
 import type { Student } from "@/types";
 
 export type StudentAttendanceReportRow = {
@@ -141,10 +142,9 @@ export async function fetchStudentAttendanceReportPdf(
 }
 
 export function downloadStudentAttendanceReport(file: StudentAttendanceReportFile): void {
-  const url = URL.createObjectURL(file.blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile({
+    blob: file.blob,
+    filename: file.filename,
+    mimeType: "application/pdf",
+  });
 }

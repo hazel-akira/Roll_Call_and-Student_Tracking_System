@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { PdfDocumentPreview } from "@/components/reports/pdf-document-preview";
 import {
   downloadStudentAttendanceReport,
   fetchStudentAttendanceReport,
@@ -32,6 +33,7 @@ export function StudentAttendanceReportPanel({ student }: { student: Student }) 
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<StudentAttendanceReport | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ blob: Blob; filename: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -45,6 +47,7 @@ export function StudentAttendanceReportPanel({ student }: { student: Student }) 
   useEffect(() => {
     setReport(null);
     setError(null);
+    setPreviewFile(null);
     setPreviewUrl((current) => {
       if (current) {
         URL.revokeObjectURL(current);
@@ -65,6 +68,7 @@ export function StudentAttendanceReportPanel({ student }: { student: Student }) 
       ]);
 
       setReport(reportData);
+      setPreviewFile({ blob: pdfFile.blob, filename: pdfFile.filename });
       setPreviewUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);
@@ -74,6 +78,7 @@ export function StudentAttendanceReportPanel({ student }: { student: Student }) 
       });
     } catch {
       setReport(null);
+      setPreviewFile(null);
       setPreviewUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);
@@ -205,25 +210,19 @@ export function StudentAttendanceReportPanel({ student }: { student: Student }) 
               </table>
             </div>
 
-            {previewUrl ? (
+            {previewUrl && previewFile ? (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-foreground">PDF preview</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={downloading}
-                    onClick={() => void handleDownload()}
-                  >
-                    <Download size={16} />
-                    {downloading ? "Downloading…" : "Download PDF"}
-                  </Button>
-                </div>
-                <iframe
+                <p className="text-sm font-medium text-foreground">PDF preview</p>
+                <PdfDocumentPreview
+                  previewUrl={previewUrl}
+                  file={{
+                    blob: previewFile.blob,
+                    filename: previewFile.filename,
+                    mimeType: "application/pdf",
+                  }}
                   title={`Attendance report for ${student.full_name}`}
-                  src={previewUrl}
-                  className="h-[70vh] w-full rounded-xl border bg-(--surface-solid)"
+                  onDownload={handleDownload}
+                  downloading={downloading}
                 />
               </div>
             ) : null}

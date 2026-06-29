@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,22 @@ import type { AttendanceSession, Student } from "@/types";
 const statuses = ["present", "missing", "sick", "on_leave"] as const;
 
 type AttendanceUiStatus = (typeof statuses)[number];
+
+function normalizeStatus(status: string | undefined): AttendanceUiStatus | undefined {
+  if (!status) {
+    return undefined;
+  }
+
+  if ((statuses as readonly string[]).includes(status)) {
+    return status as AttendanceUiStatus;
+  }
+
+  if (status === "absent") {
+    return "missing";
+  }
+
+  return undefined;
+}
 
 const statusSelectedStyles: Record<AttendanceUiStatus, string> = {
   present:
@@ -46,7 +62,12 @@ export function AttendanceRecordsTable({
 }) {
   const [busy, setBusy] = useState(false);
   const [remarks, setRemarks] = useState<Record<number, string>>({});
-  const [statusMap, setStatusMap] = useState<Record<number, typeof statuses[number]>>({});
+  const [statusMap, setStatusMap] = useState<Record<number, AttendanceUiStatus>>({});
+
+  useEffect(() => {
+    setStatusMap({});
+    setRemarks({});
+  }, [session?.id]);
 
   const rows = useMemo(() => {
     if (!session) return [];
@@ -55,15 +76,23 @@ export function AttendanceRecordsTable({
       .filter((student) => Number.isFinite(student.id) && student.id > 0)
       .map((student) => {
         const existing = session.records?.find((record) => record.student?.id === student.id);
+        const savedStatus = normalizeStatus(existing?.status);
+        const explicitStatus = statusMap[student.id];
+        const isMarked = explicitStatus !== undefined || savedStatus !== undefined;
+
         return {
           student,
-          status: statusMap[student.id] ?? existing?.status ?? "present",
+          isMarked,
+          status: explicitStatus ?? savedStatus,
           remark: remarks[student.id] ?? existing?.remark ?? "",
         };
       });
   }, [remarks, session, statusMap, students]);
 
   const hasSyncableStudents = rows.length > 0;
+  const markedCount = rows.filter((row) => row.isMarked).length;
+  const unmarkedCount = rows.length - markedCount;
+  const allStudentsMarked = hasSyncableStudents && unmarkedCount === 0;
 
   if (!session) {
     return (
@@ -87,12 +116,19 @@ export function AttendanceRecordsTable({
           <Badge value={session.dynamics_sync_status} />
         </div>
       </div>
-      <div className="flex justify-end border-b px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+        <p className="text-sm text-muted">
+          {hasSyncableStudents
+            ? allStudentsMarked
+              ? `All ${rows.length} student(s) marked. You can save attendance.`
+              : `${markedCount} of ${rows.length} student(s) marked. Tap each student or use Mark All Present before saving.`
+            : null}
+        </p>
         <Button
           variant="secondary"
-          disabled={busy || session.status === "closed"}
+          disabled={busy || session.status === "closed" || !hasSyncableStudents}
           onClick={() => {
-            const next: Record<number, typeof statuses[number]> = {};
+            const next: Record<number, AttendanceUiStatus> = {};
             rows.forEach((row) => {
               next[row.student.id] = "present";
             });
@@ -120,9 +156,23 @@ export function AttendanceRecordsTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.student.id} className="border-t">
+              <tr
+                key={row.student.id}
+                className={cn(
+                  "border-t",
+                  !row.isMarked &&
+                    "bg-amber-50/80 dark:bg-amber-500/5",
+                )}
+              >
                 <td className="px-5 py-3 font-medium text-foreground">
-                  {row.student.full_name}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>{row.student.full_name}</span>
+                    {!row.isMarked ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                        Not marked
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-5 py-3 text-muted">
                   {row.student.admission_number}
@@ -185,21 +235,33 @@ export function AttendanceRecordsTable({
           Close session
         </Button>
         <Button
-          disabled={busy || session.status === "closed" || !hasSyncableStudents}
+          disabled={
+            busy || session.status === "closed" || !hasSyncableStudents || !allStudentsMarked
+          }
           title={
-            hasSyncableStudents
-              ? undefined
-              : "Wait for students to finish loading from Dataverse before saving."
+            !hasSyncableStudents
+              ? "Wait for students to finish loading from Dataverse before saving."
+              : !allStudentsMarked
+                ? `Mark all ${unmarkedCount} remaining student(s) before saving.`
+                : undefined
           }
           onClick={async () => {
+            if (!allStudentsMarked) {
+              return;
+            }
+
             setBusy(true);
             try {
               await onSave(
-                rows.map((row) => ({
-                  student_id: row.student.id,
-                  status: row.status,
-                  remark: row.remark || undefined,
-                })),
+                rows
+                  .filter((row): row is typeof row & { status: AttendanceUiStatus } =>
+                    row.status !== undefined,
+                  )
+                  .map((row) => ({
+                    student_id: row.student.id,
+                    status: row.status,
+                    remark: row.remark || undefined,
+                  })),
               );
             } finally {
               setBusy(false);

@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+import { downloadBlobFile } from "@/lib/reports/blob-file";
 import type { NotificationItem } from "@/types";
 
 export type ReportExportFormat = "pdf" | "xlsx";
@@ -57,12 +58,11 @@ export async function fetchReportExport(
 }
 
 export function downloadReportExportFile(file: ReportExportFile): void {
-  const url = URL.createObjectURL(file.blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile({
+    blob: file.blob,
+    filename: file.filename,
+    mimeType: file.mimeType,
+  });
 }
 
 export async function downloadReportExport(notification: NotificationItem): Promise<void> {

@@ -52,19 +52,13 @@ class RollCallMemoBuilder
 
         $recordsByStudent = $session->records->keyBy('student_id');
         $students = $this->classRoster($session->class_id);
-        $rollAssignments = $this->assignRollNumbers($students);
 
         $rows = [];
 
-        foreach ($rollAssignments as $assignment) {
-            $student = $assignment['student'];
-            $record = $student ? $recordsByStudent->get($student->id) : null;
-
+        foreach ($students as $student) {
             $rows[] = $this->buildRow(
-                $assignment['roll_number'],
-                $assignment['gender_label'],
                 $student,
-                $record,
+                $recordsByStudent->get($student->id),
             );
         }
 
@@ -107,50 +101,15 @@ class RollCallMemoBuilder
     }
 
     /**
-     * @return array<int, array{roll_number: int, gender_label: string, student: ?Student}>
-     */
-    private function assignRollNumbers(Collection $students): array
-    {
-        $boyStart = (int) config('reports.roll_call_memo.boy_roll_start', 1);
-        $boyEnd = (int) config('reports.roll_call_memo.boy_roll_end', 7);
-        $girlStart = (int) config('reports.roll_call_memo.girl_roll_start', 14);
-
-        $boys = $students->filter(fn (Student $student): bool => $student->gender === 'male')->values();
-        $girls = $students->filter(fn (Student $student): bool => $student->gender !== 'male')->values();
-
-        $assignments = [];
-
-        for ($roll = $boyStart, $index = 0; $roll <= $boyEnd; $roll++, $index++) {
-            $assignments[] = [
-                'roll_number' => $roll,
-                'gender_label' => 'Boys',
-                'student' => $boys->get($index),
-            ];
-        }
-
-        foreach ($girls as $index => $student) {
-            $assignments[] = [
-                'roll_number' => $girlStart + $index,
-                'gender_label' => 'Girls',
-                'student' => $student,
-            ];
-        }
-
-        return $assignments;
-    }
-
-    /**
      * @return array<string, mixed>
      */
-    private function buildRow(int $rollNumber, string $genderLabel, ?Student $student, ?AttendanceRecord $record): array
+    private function buildRow(Student $student, ?AttendanceRecord $record): array
     {
         $status = $record?->status;
         $timeIn = $record?->marked_at ? $record->marked_at->format('g:i:s A') : '';
 
         return [
-            'roll_label' => sprintf('%s: %d', $genderLabel, $rollNumber),
-            'roll_number' => $rollNumber,
-            'student_name' => $student ? $this->formatStudentName($student) : '',
+            'student_name' => $this->formatStudentName($student),
             'present' => $status === 'present' ? 'PRESENT' : '',
             'absent' => $status === 'absent' ? 'ABSENT' : '',
             'late' => $status === 'late' ? 'LATE' : '',

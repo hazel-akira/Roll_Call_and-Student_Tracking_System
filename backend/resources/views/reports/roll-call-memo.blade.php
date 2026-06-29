@@ -85,12 +85,8 @@
             background: #fff;
         }
 
-        .col-roll {
-            width: 12%;
-        }
-
         .col-student {
-            width: 28%;
+            width: 36%;
         }
 
         .col-remark {
@@ -187,13 +183,11 @@
                 <table class="roll-table">
                     <thead>
                         <tr>
-                            <th class="col-roll">Column A — Roll Call Number</th>
-                            <th class="col-student">Column B — Students</th>
+                            <th class="col-student">Students</th>
                             <th colspan="4">Remarks</th>
                             <th class="col-far">FAR</th>
                         </tr>
                         <tr>
-                            <th></th>
                             <th></th>
                             <th class="col-remark">Present</th>
                             <th class="col-remark">
@@ -211,7 +205,6 @@
                     <tbody>
                         @foreach ($page['rows'] as $row)
                             <tr>
-                                <td>{{ $row['roll_label'] }}</td>
                                 <td>{{ $row['student_name'] }}</td>
                                 <td class="status-cell">{{ $row['present'] }}</td>
                                 <td class="status-cell">

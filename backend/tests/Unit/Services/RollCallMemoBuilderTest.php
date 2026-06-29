@@ -85,12 +85,8 @@ class RollCallMemoBuilderTest extends TestCase
         $this->assertSame('Thursday, February 26, 2026', $memo['date_formatted']);
 
         $rows = $memo['pages'][0]['rows'];
-        $this->assertSame('Boys: 1', $rows[0]['roll_label']);
-        $this->assertSame('', $rows[0]['student_name']);
-
-        $girlRow = collect($rows)->firstWhere('roll_label', 'Girls: 14');
-        $this->assertNotNull($girlRow);
-        $this->assertSame('AMUGA MARION', $girlRow['student_name']);
-        $this->assertSame('PRESENT', $girlRow['present']);
+        $this->assertCount(1, $rows);
+        $this->assertSame('AMUGA MARION', $rows[0]['student_name']);
+        $this->assertSame('PRESENT', $rows[0]['present']);
     }
 }

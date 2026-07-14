@@ -26,8 +26,12 @@ function startOfWeekIso(date = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
-function entryKey(entry: Pick<EditableEntry, "id" | "category" | "location" | "time_slot" | "sort_order">) {
-  return entry.id ?? `${entry.category}-${entry.location}-${entry.time_slot}-${entry.sort_order}`;
+function entryKey(
+  entry: Pick<EditableEntry, "id" | "category" | "location" | "time_slot" | "sort_order">,
+): string {
+  return entry.id != null
+    ? String(entry.id)
+    : `${entry.category}-${entry.location}-${entry.time_slot}-${entry.sort_order}`;
 }
 
 export function DutyRosterEditor({

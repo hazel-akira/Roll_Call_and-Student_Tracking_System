@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { sortStudentsByAdmissionNumber } from "@/lib/students/sort-by-admission-number";
 import type { AttendanceSession, Student } from "@/types";
 
 const statuses = ["present", "missing", "sick", "on_leave"] as const;
@@ -72,8 +73,9 @@ export function AttendanceRecordsTable({
   const rows = useMemo(() => {
     if (!session) return [];
 
-    return students
-      .filter((student) => Number.isFinite(student.id) && student.id > 0)
+    return sortStudentsByAdmissionNumber(
+      students.filter((student) => Number.isFinite(student.id) && student.id > 0),
+    )
       .map((student) => {
         const existing = session.records?.find((record) => record.student?.id === student.id);
         const savedStatus = normalizeStatus(existing?.status);
@@ -120,7 +122,7 @@ export function AttendanceRecordsTable({
         <p className="text-sm text-muted">
           {hasSyncableStudents
             ? allStudentsMarked
-              ? `All ${rows.length} student(s) marked. You can save attendance.`
+              ? `All ${rows.length} student(s) marked. You can save and send the report.`
               : `${markedCount} of ${rows.length} student(s) marked. Tap each student or use Mark All Present before saving.`
             : null}
         </p>
@@ -268,7 +270,7 @@ export function AttendanceRecordsTable({
             }
           }}
         >
-          {busy ? "Saving..." : "Save attendance"}
+          {busy ? "Saving..." : "Save & send report"}
         </Button>
       </div>
     </Card>

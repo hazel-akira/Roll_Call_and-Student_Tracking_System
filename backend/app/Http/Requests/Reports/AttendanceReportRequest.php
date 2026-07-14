@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\Reports;
 
+use App\Support\RoleSlugs;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AttendanceReportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->role?->slug, ['admin', 'ict_staff'], true);
+        return in_array($this->user()?->role?->slug, RoleSlugs::reportViewerSlugs(), true);
     }
 
     public function rules(): array

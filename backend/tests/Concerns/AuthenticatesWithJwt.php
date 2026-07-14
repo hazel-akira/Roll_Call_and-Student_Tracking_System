@@ -56,4 +56,18 @@ trait AuthenticatesWithJwt
 
         return [$teacher, $school];
     }
+
+    protected function createDeanWithSchool(string $roleSlug = 'dean_of_students', array $schoolOverrides = []): array
+    {
+        $school = School::query()->create(array_merge([
+            'name' => 'Pioneer School',
+            'code' => 'PIONEER-DEAN-TEST',
+            'active' => true,
+        ], $schoolOverrides));
+
+        $dean = $this->createUserWithRole($roleSlug);
+        $dean->schools()->attach($school->id);
+
+        return [$dean, $school];
+    }
 }

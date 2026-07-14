@@ -11,6 +11,7 @@ Route::get('/', function () {
         'panels' => [
             'admin' => url('/admin'),
             'teacher' => url('/teacher'),
+            'dean' => url('/dean'),
         ],
         'microsoft_sso' => config('services.microsoft.enabled') && filled(config('services.microsoft.client_id')),
     ]);

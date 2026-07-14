@@ -12,4 +12,13 @@ return [
     'girl_roll_end' => (int) env('ROLL_CALL_GIRL_END', 40),
     'rows_per_page' => (int) env('ROLL_CALL_ROWS_PER_PAGE', 16),
   ],
+
+  'roll_call_report' => [
+    'auto_send' => filter_var(env('ROLL_CALL_REPORT_AUTO_SEND', true), FILTER_VALIDATE_BOOL),
+    'use_microsoft_graph' => filter_var(env('ROLL_CALL_REPORT_USE_MS_GRAPH', false), FILTER_VALIDATE_BOOL),
+    'extra_recipients' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('ROLL_CALL_REPORT_EXTRA_RECIPIENTS', ''))
+    ))),
+  ],
 ];

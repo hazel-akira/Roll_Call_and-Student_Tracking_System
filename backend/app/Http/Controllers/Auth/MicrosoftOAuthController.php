@@ -16,6 +16,7 @@ use Throwable;
 
 class MicrosoftOAuthController extends Controller
 {
+    private const FILAMENT_PANELS = ['admin', 'teacher', 'dean'];
     public function __construct(
         private readonly MicrosoftOAuthService $oauth,
         private readonly MicrosoftTokenValidator $tokenValidator,
@@ -31,7 +32,7 @@ class MicrosoftOAuthController extends Controller
 
         $panel = (string) $request->query('panel', 'admin');
 
-        abort_unless(in_array($panel, ['admin', 'teacher'], true), 404);
+        abort_unless(in_array($panel, self::FILAMENT_PANELS, true), 404);
 
         return redirect()->away($this->oauth->authorizationUrl($panel));
     }
@@ -71,7 +72,7 @@ class MicrosoftOAuthController extends Controller
             $panel = Filament::getPanel($panelId);
 
             if (! $user->canAccessPanel($panel)) {
-                foreach (['admin', 'teacher'] as $alternatePanelId) {
+                foreach (self::FILAMENT_PANELS as $alternatePanelId) {
                     if ($alternatePanelId === $panelId) {
                         continue;
                     }
@@ -91,8 +92,10 @@ class MicrosoftOAuthController extends Controller
                             $request,
                         );
 
+                        session()->forget('url.intended');
+
                         return redirect()
-                            ->intended($alternatePanel->getUrl())
+                            ->to($alternatePanel->getUrl())
                             ->with('microsoft_sso_notice', 'You were signed in to the '.strtolower($alternatePanel->getBrandName()).' panel for your role.');
                     }
                 }
@@ -129,7 +132,7 @@ class MicrosoftOAuthController extends Controller
 
     private function redirectToPanelLogin(string $panelId, string $message): RedirectResponse
     {
-        $panelId = in_array($panelId, ['admin', 'teacher'], true) ? $panelId : 'admin';
+        $panelId = in_array($panelId, self::FILAMENT_PANELS, true) ? $panelId : 'admin';
 
         return redirect()
             ->to(Filament::getPanel($panelId)->getLoginUrl())

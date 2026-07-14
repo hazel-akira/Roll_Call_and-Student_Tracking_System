@@ -6,28 +6,43 @@ use App\Services\Auth\MicrosoftOAuthService;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Facades\Filament;
+use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\RenderHook;
+use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
 
 class Login extends BaseLogin
 {
-    protected function getFormActions(): array
+    public function content(Schema $schema): Schema
     {
-        $actions = parent::getFormActions();
+        $components = [];
 
-        if (! app(MicrosoftOAuthService::class)->isEnabled()) {
-            return $actions;
+        if (app(MicrosoftOAuthService::class)->isEnabled()) {
+            $components[] = Actions::make([
+                $this->microsoftSignInAction(),
+            ])
+                ->fullWidth()
+                ->key('microsoft-sso');
         }
 
-        return [
-            Action::make('microsoft')
-                ->label('Continue with Microsoft')
-                ->color(Color::hex('#2f2f88'))
-                ->url(route('auth.microsoft.redirect', ['panel' => Filament::getCurrentPanel()->getId()]))
-                ->extraAttributes(['class' => 'w-full']),
-            ...$actions,
-        ];
+        return $schema->components([
+            ...$components,
+            RenderHook::make(PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE),
+            $this->getFormContentComponent(),
+            $this->getMultiFactorChallengeFormContentComponent(),
+            RenderHook::make(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER),
+        ]);
+    }
+
+    protected function microsoftSignInAction(): Action
+    {
+        return Action::make('microsoft')
+            ->label('Continue with Microsoft')
+            ->color(Color::hex('#df8811'))
+            ->url(route('auth.microsoft.redirect', ['panel' => Filament::getCurrentPanel()->getId()]));
     }
 
     public function getSubheading(): string | Htmlable | null

@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Services\ClassStreamResolver;
 use App\Services\DynamicsService;
 use App\Services\TenantService;
+use App\Support\AdmissionNumberSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -188,7 +189,7 @@ class DynamicsAttendanceController extends Controller
      */
     private function formatDynamicsStudentsForResponse(array $dynamicsStudents): array
     {
-        return array_map(function (array $row): array {
+        $rows = array_map(function (array $row): array {
             $first = (string) ($row['first_name'] ?? '');
             $last = (string) ($row['last_name'] ?? '');
 
@@ -203,6 +204,8 @@ class DynamicsAttendanceController extends Controller
                 'external_reference' => $row['external_reference'] ?? null,
             ];
         }, $dynamicsStudents);
+
+        return AdmissionNumberSort::sortRows($rows);
     }
 
     private function upsertStudentsToClass(array $dynamicsStudents, int $classId): array
@@ -243,11 +246,19 @@ class DynamicsAttendanceController extends Controller
             $syncedIds[] = $student->id;
         }
 
+        if ($syncedIds !== []) {
+            Student::query()
+                ->where('class_id', $classId)
+                ->where('status', 'active')
+                ->whereNotIn('id', $syncedIds)
+                ->update(['status' => 'inactive']);
+        }
+
         $students = Student::query()
             ->with('classRoom.school')
             ->where('class_id', $classId)
             ->when($syncedIds !== [], fn ($query) => $query->whereIn('id', $syncedIds))
-            ->orderBy('last_name')
+            ->orderBy('admission_number')
             ->get();
 
         return StudentResource::collection($students)->resolve();

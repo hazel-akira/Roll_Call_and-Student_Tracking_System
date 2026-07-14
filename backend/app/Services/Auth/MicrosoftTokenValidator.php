@@ -17,6 +17,10 @@ use Throwable;
 
 class MicrosoftTokenValidator
 {
+    private const JWKS_CACHE_KEY = 'microsoft.jwks';
+
+    private const JWKS_SOURCE_CACHE_KEY = 'microsoft.jwks_source_url';
+
     public function validate(string $idToken, ?string $expectedNonce = null): array
     {
         try {
@@ -26,13 +30,7 @@ class MicrosoftTokenValidator
                 throw new \RuntimeException('Microsoft JWKS URL is not configured.');
             }
 
-            $jwks = Cache::remember('microsoft.jwks', now()->addHour(), function () use ($jwksUrl): array {
-                return Http::timeout(10)
-                    ->acceptJson()
-                    ->get($jwksUrl)
-                    ->throw()
-                    ->json();
-            });
+            $jwks = Cache::remember(self::JWKS_CACHE_KEY, now()->addDay(), fn (): array => $this->fetchJwks($jwksUrl));
 
             JWT::$leeway = 60;
 
@@ -46,7 +44,7 @@ class MicrosoftTokenValidator
 
             throw ValidationException::withMessages([
                 'id_token' => $this->publicValidationMessage(
-                    'Unable to reach Microsoft to validate the identity token. Check backend outbound HTTPS access and MICROSOFT_JWKS_URL.',
+                    'Unable to reach Microsoft to validate the identity token. Check backend outbound HTTPS access, then run: php artisan microsoft:warm-jwks-cache',
                     $exception,
                 ),
             ]);
@@ -61,7 +59,8 @@ class MicrosoftTokenValidator
             ]);
         } catch (SignatureInvalidException $exception) {
             report($exception);
-            Cache::forget('microsoft.jwks');
+            Cache::forget(self::JWKS_CACHE_KEY);
+            Cache::forget(self::JWKS_SOURCE_CACHE_KEY);
 
             throw ValidationException::withMessages([
                 'id_token' => $this->publicValidationMessage(
@@ -119,6 +118,86 @@ class MicrosoftTokenValidator
             'job_title' => $claims['jobTitle'] ?? null,
             'nonce' => $claims['nonce'] ?? null,
         ];
+    }
+
+    /**
+     * @return array{url: string, key_count: int}
+     */
+    public function warmCache(): array
+    {
+        $jwksUrl = trim((string) config('services.microsoft.jwks_url'));
+
+        if ($jwksUrl === '') {
+            throw new \RuntimeException('Microsoft JWKS URL is not configured.');
+        }
+
+        Cache::forget(self::JWKS_CACHE_KEY);
+        Cache::forget(self::JWKS_SOURCE_CACHE_KEY);
+
+        $jwks = $this->fetchJwks($jwksUrl);
+
+        return [
+            'url' => (string) Cache::get(self::JWKS_SOURCE_CACHE_KEY, $jwksUrl),
+            'key_count' => count(Arr::wrap($jwks['keys'] ?? [])),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchJwks(string $primaryUrl): array
+    {
+        $urls = array_values(array_unique(array_filter([
+            $primaryUrl,
+            'https://login.microsoftonline.com/common/discovery/v2.0/keys',
+        ])));
+
+        $lastException = null;
+
+        foreach ($urls as $url) {
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    $response = Http::timeout(30)
+                        ->acceptJson()
+                        ->get($url)
+                        ->throw();
+
+                    /** @var array<string, mixed> $json */
+                    $json = $response->json();
+
+                    if (Arr::wrap($json['keys'] ?? []) === []) {
+                        throw new \RuntimeException('Microsoft JWKS response did not include signing keys.');
+                    }
+
+                    Cache::put(self::JWKS_SOURCE_CACHE_KEY, $url, now()->addDay());
+
+                    return $json;
+                } catch (ConnectionException|RequestException|\RuntimeException $exception) {
+                    $lastException = $exception;
+                    Log::warning('Microsoft JWKS fetch attempt failed.', [
+                        'url' => $url,
+                        'attempt' => $attempt,
+                        'message' => $exception->getMessage(),
+                    ]);
+
+                    if ($attempt < 3) {
+                        usleep(500_000 * $attempt);
+                    }
+                }
+            }
+        }
+
+        $stale = Cache::get(self::JWKS_CACHE_KEY);
+
+        if (is_array($stale) && Arr::wrap($stale['keys'] ?? []) !== []) {
+            Log::warning('Using cached Microsoft JWKS after live fetch failures.', [
+                'source_url' => Cache::get(self::JWKS_SOURCE_CACHE_KEY),
+            ]);
+
+            return $stale;
+        }
+
+        throw $lastException ?? new ConnectionException('Unable to fetch Microsoft JWKS.');
     }
 
     private function validateAudience(array $claims): void

@@ -41,6 +41,7 @@ class ReportController extends Controller
     {
         $validated = $request->validated();
         $format = $validated['format'] ?? 'xlsx';
+        unset($validated['format']);
 
         if ($format === 'json') {
             return response()->json([
@@ -48,10 +49,22 @@ class ReportController extends Controller
             ]);
         }
 
-        GenerateAttendanceExport::dispatch($request->user()->id, $validated, $format);
+        $job = new GenerateAttendanceExport($request->user()->id, $validated, $format);
+
+        if (config('queue.default') === 'sync') {
+            dispatch_sync($job);
+
+            return response()->json([
+                'message' => 'Report export generated successfully.',
+                'status' => 'completed',
+            ]);
+        }
+
+        dispatch($job);
 
         return response()->json([
             'message' => 'Report export queued successfully.',
+            'status' => 'queued',
         ], 202);
     }
 

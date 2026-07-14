@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Support\RoleSlugs;
 use Illuminate\Validation\ValidationException;
 
 class UserAccessService
@@ -13,14 +14,14 @@ class UserAccessService
         return $user->status === 'active';
     }
 
-    public function teacherRequiresSchools(User $user): bool
+    public function userRequiresSchools(User $user): bool
     {
-        return $user->role?->slug === 'teacher';
+        return RoleSlugs::requiresSchoolAssignment($user->role?->slug);
     }
 
     public function hasSchoolAccess(User $user): bool
     {
-        if (! $this->teacherRequiresSchools($user)) {
+        if (! $this->userRequiresSchools($user)) {
             return true;
         }
 
@@ -33,9 +34,9 @@ class UserAccessService
             return;
         }
 
-        if ($this->teacherRequiresSchools($user) && ! $this->hasSchoolAccess($user)) {
+        if ($this->userRequiresSchools($user) && ! $this->hasSchoolAccess($user)) {
             throw ValidationException::withMessages([
-                'schools' => 'Teachers must be assigned to at least one school before access is granted.',
+                'schools' => 'Teachers and dean staff must be assigned to at least one school before access is granted.',
             ]);
         }
     }
@@ -81,9 +82,14 @@ class UserAccessService
         return match ($panelId) {
             'admin' => match ($role) {
                 'teacher' => 'Your account is a teacher. Use the teacher panel at /teacher to sign in.',
+                'dean_of_students', 'deputy_dean' => 'Your account is dean staff. Use the dean panel at /dean to sign in.',
                 default => 'Your account does not have administrator access. Ask an ICT administrator to assign the admin or ICT staff role.',
             },
-            'teacher' => 'Your account is not set up for the teacher panel. Ask an administrator to assign the teacher role and school access.',
+            'teacher' => match ($role) {
+                'dean_of_students', 'deputy_dean' => 'Your account is dean staff. Use the dean panel at /dean to sign in.',
+                default => 'Your account is not set up for the teacher panel. Ask an administrator to assign the teacher role and school access.',
+            },
+            'dean' => 'Your account is not set up for the dean panel. Ask an administrator to assign the dean of students or deputy dean role and school access.',
             default => 'Your account does not have access to this panel.',
         };
     }

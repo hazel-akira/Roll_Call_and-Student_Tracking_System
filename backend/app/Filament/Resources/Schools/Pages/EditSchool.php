@@ -16,4 +16,11 @@ class EditSchool extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $this->record->rollCallSettingsOrDefault();
+
+        return $data;
+    }
 }

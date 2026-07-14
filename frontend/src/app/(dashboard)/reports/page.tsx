@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { ReportExportsPanel } from "@/components/reports/report-exports-panel";
 import { ReportFilters, type ReportFilters as FilterState } from "@/components/reports/report-filters";
 import { SummaryCard } from "@/components/dashboard/summary-card";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/auth-context";
 import { apiClient } from "@/lib/api/client";
 import { useSchool } from "@/lib/tenant/school-context";
-import { roleHomePath } from "@/lib/utils";
+import { roleHomePath, canViewReports } from "@/lib/utils";
 import type { SchoolClass } from "@/types";
 
 type ReportSummaryResponse = {
@@ -29,6 +28,19 @@ type ReportSummaryResponse = {
   }>;
 };
 
+type ExportResponse = {
+  message: string;
+  status?: "completed" | "queued";
+};
+
+function buildReportParams(filters: FilterState) {
+  return {
+    from: filters.from,
+    to: filters.to,
+    class_id: filters.class_id || undefined,
+  };
+}
+
 export default function ReportsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -39,21 +51,32 @@ export default function ReportsPage() {
     to: new Date().toISOString().slice(0, 10),
     class_id: "",
   });
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(filters);
   const [summary, setSummary] = useState<ReportSummaryResponse | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportPolling, setExportPolling] = useState(false);
   const [exportBusy, setExportBusy] = useState<"xlsx" | "pdf" | null>(null);
-  const canViewReports = user?.role?.slug === "admin" || user?.role?.slug === "ict_staff";
+  const [exportsRefreshKey, setExportsRefreshKey] = useState(0);
+  const canViewReportsAccess = canViewReports(user?.role?.slug);
 
-  const reportParams = useCallback(
-    () => ({
-      from: filters.from,
-      to: filters.to,
-      class_id: filters.class_id || undefined,
-    }),
-    [filters],
-  );
+  const loadSummary = useCallback(async (nextFilters: FilterState) => {
+    try {
+      const summaryResponse = await apiClient.get<ReportSummaryResponse>(
+        "/reports/attendance-summary",
+        { params: buildReportParams(nextFilters) },
+      );
+
+      setSummary(summaryResponse.data);
+    } catch {
+      setSummary(null);
+    }
+  }, []);
+
+  const applyFilters = useCallback(async () => {
+    setAppliedFilters(filters);
+    await loadSummary(filters);
+  }, [filters, loadSummary]);
 
   const queueExport = useCallback(
     async (format: "xlsx" | "pdf") => {
@@ -62,20 +85,26 @@ export default function ReportsPage() {
       setExportMessage(null);
 
       try {
-        await apiClient.get("/reports/export", {
-          params: { ...reportParams(), format },
+        const response = await apiClient.get<ExportResponse>("/reports/export", {
+          params: { ...buildReportParams(appliedFilters), format },
         });
-        setExportMessage(
-          `${format.toUpperCase()} export queued. It will appear below when ready.`,
-        );
-        setExportPolling(true);
+
+        if (response.data.status === "completed") {
+          setExportMessage(response.data.message);
+          setExportsRefreshKey((value) => value + 1);
+        } else {
+          setExportMessage(
+            `${format.toUpperCase()} export queued. It will appear below when ready.`,
+          );
+          setExportPolling(true);
+        }
       } catch {
-        setExportError("Unable to queue the export. Confirm the queue worker is running.");
+        setExportError("Unable to generate the export. Try again or confirm the queue worker is running.");
       } finally {
         setExportBusy(null);
       }
     },
-    [reportParams],
+    [appliedFilters],
   );
 
   useEffect(() => {
@@ -83,13 +112,13 @@ export default function ReportsPage() {
       return;
     }
 
-    if (!canViewReports) {
+    if (!canViewReportsAccess) {
       router.replace(roleHomePath(user.role?.slug));
     }
-  }, [canViewReports, loading, router, user]);
+  }, [canViewReportsAccess, loading, router, user]);
 
   useEffect(() => {
-    if (!canViewReports) {
+    if (!canViewReportsAccess) {
       return;
     }
 
@@ -101,71 +130,27 @@ export default function ReportsPage() {
       .catch(() => {
         setClasses([]);
       });
-  }, [canViewReports, revision]);
-
-  const loadReports = useCallback(async () => {
-    const params = reportParams();
-
-    try {
-      const summaryResponse = await apiClient.get<ReportSummaryResponse>(
-        "/reports/attendance-summary",
-        { params },
-      );
-
-      setSummary(summaryResponse.data);
-    } catch {
-      setSummary(null);
-    }
-  }, [reportParams]);
+  }, [canViewReportsAccess, revision]);
 
   useEffect(() => {
-    if (!canViewReports) {
+    if (!canViewReportsAccess) {
       return;
     }
 
-    let cancelled = false;
+    void loadSummary(appliedFilters);
+  }, [appliedFilters, canViewReportsAccess, loadSummary, revision]);
 
-    async function bootstrap() {
-      try {
-        const summaryResponse = await apiClient.get<ReportSummaryResponse>(
-          "/reports/attendance-summary",
-          { params: reportParams() },
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        setSummary(summaryResponse.data);
-      } catch {
-        if (!cancelled) {
-          setSummary(null);
-        }
-      }
-    }
-
-    void bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [canViewReports, filters, reportParams, revision]);
-
-  if (!canViewReports) {
+  if (!canViewReportsAccess) {
     return null;
   }
 
   return (
     <div className="space-y-6">
       <section>
-        <p className="page-eyebrow">
-          Reporting and analytics
-        </p>
+        <p className="page-eyebrow">Reporting and analytics</p>
         <h1 className="page-title">Attendance insights and export tools</h1>
         {currentSchool ? (
-          <p className="mt-2 text-sm text-muted">
-            Reports for {currentSchool.name}
-          </p>
+          <p className="mt-2 text-sm text-muted">Reports for {currentSchool.name}</p>
         ) : (
           <p className="mt-2 text-sm text-muted">
             Select a school in the header to scope reports to one campus.
@@ -173,23 +158,14 @@ export default function ReportsPage() {
         )}
       </section>
       <Card className="p-5">
-        <ReportFilters classes={classes} value={filters} onChange={setFilters} onApply={() => void loadReports()} />
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button
-            variant="outline"
-            disabled={exportBusy !== null}
-            onClick={() => void queueExport("xlsx")}
-          >
-            {exportBusy === "xlsx" ? "Queueing Excel…" : "Queue Excel export"}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={exportBusy !== null}
-            onClick={() => void queueExport("pdf")}
-          >
-            {exportBusy === "pdf" ? "Queueing PDF…" : "Queue PDF export"}
-          </Button>
-        </div>
+        <ReportFilters
+          classes={classes}
+          value={filters}
+          onChange={setFilters}
+          onApply={() => void applyFilters()}
+          exportBusy={exportBusy}
+          onExport={(format) => void queueExport(format)}
+        />
         {exportMessage ? (
           <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">{exportMessage}</p>
         ) : null}
@@ -199,7 +175,7 @@ export default function ReportsPage() {
           </p>
         ) : null}
       </Card>
-      
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Records" value={summary?.totals.records ?? 0} />
         <SummaryCard label="Present" value={summary?.totals.present ?? 0} />
@@ -208,6 +184,7 @@ export default function ReportsPage() {
         <SummaryCard label="Attendance rate" value={`${summary?.totals.attendance_rate ?? 0}%`} />
       </section>
       <ReportExportsPanel
+        refreshKey={exportsRefreshKey}
         pollForNewExport={exportPolling}
         onPollComplete={() => setExportPolling(false)}
       />

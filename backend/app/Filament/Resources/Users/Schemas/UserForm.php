@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Models\Role;
 use App\Services\Auth\UserAccessService;
+use App\Support\RoleSlugs;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -46,7 +47,7 @@ class UserForm
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->helperText('Teacher: attendance only. Admin / ICT: full platform and admin panel.'),
+                            ->helperText('Teacher: attendance. Dean / Deputy: duty roster & reports. Admin / ICT: full platform.'),
                         Select::make('status')
                             ->label('Access status')
                             ->options([
@@ -62,7 +63,7 @@ class UserForm
                             ->dehydrated(false)
                             ->live()
                             ->default(false)
-                            ->helperText('Optional. Required only if this user should sign in at /admin or /teacher with email and password.'),
+                            ->helperText('Optional. Required only if this user should sign in at /admin, /teacher, or /dean with email and password.'),
                         TextInput::make('password')
                             ->password()
                             ->revealable()
@@ -72,7 +73,7 @@ class UserForm
                             ->required(fn (Get $get, $livewire): bool => (bool) $get('set_panel_password') && $livewire instanceof \Filament\Resources\Pages\CreateRecord),
                     ]),
                 Section::make('School access')
-                    ->description('Required for teachers before they can use the app. Admins and ICT staff can access all schools without assignments.')
+                    ->description('Required for teachers and dean staff before they can use the app. Admins and ICT staff can access all schools without assignments.')
                     ->schema([
                         Select::make('schools')
                             ->label('Assigned schools')
@@ -98,17 +99,19 @@ class UserForm
             return false;
         }
 
-        return Role::query()->whereKey($roleId)->value('slug') === 'teacher';
+        return RoleSlugs::requiresSchoolAssignment(
+            Role::query()->whereKey($roleId)->value('slug'),
+        );
     }
 
     private static function schoolsHelper(Get $get): ?string
     {
         if ($get('status') === 'pending') {
-            return 'Assign schools before setting status to Active so teachers can sign in after approval.';
+            return 'Assign schools before setting status to Active so teachers and dean staff can sign in after approval.';
         }
 
         if (self::schoolsRequired($get)) {
-            return 'At least one school is required for active teachers.';
+            return 'At least one school is required for active teachers and dean staff.';
         }
 
         return null;

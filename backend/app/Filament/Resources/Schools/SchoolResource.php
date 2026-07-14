@@ -5,6 +5,9 @@ namespace App\Filament\Resources\Schools;
 use App\Filament\Resources\Schools\Pages\CreateSchool;
 use App\Filament\Resources\Schools\Pages\EditSchool;
 use App\Filament\Resources\Schools\Pages\ListSchools;
+use App\Filament\Resources\Schools\RelationManagers\GradeMastersRelationManager;
+use App\Filament\Resources\Schools\RelationManagers\RollCallRecipientsRelationManager;
+use App\Filament\Resources\Schools\RelationManagers\WeeklyDutyRostersRelationManager;
 use App\Filament\Resources\Schools\Schemas\SchoolForm;
 use App\Filament\Resources\Schools\Tables\SchoolsTable;
 use App\Models\School;
@@ -42,7 +45,9 @@ class SchoolResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RollCallRecipientsRelationManager::class,
+            WeeklyDutyRostersRelationManager::class,
+            GradeMastersRelationManager::class,
         ];
     }
 

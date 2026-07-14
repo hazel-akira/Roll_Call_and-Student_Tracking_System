@@ -9,7 +9,7 @@ import type { TokenSet } from "@/types";
 
 export const SELECTED_SCHOOL_STORAGE_KEY = "roll-call-selected-school-id";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
+const baseURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL,

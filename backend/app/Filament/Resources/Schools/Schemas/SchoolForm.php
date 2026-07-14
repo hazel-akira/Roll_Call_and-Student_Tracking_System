@@ -34,6 +34,30 @@ class SchoolForm
                         Toggle::make('active')
                             ->default(true),
                     ]),
+                Section::make('Roll call email rules')
+                    ->description('Control who receives automatic roll call report emails for this school. Assigned recipients and weekly duty teachers are managed in the tabs below.')
+                    ->relationship('rollCallSettings')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('assigned_recipients_only')
+                            ->label('Only use assigned recipients')
+                            ->helperText('When enabled, only staff listed under Report email recipients (plus weekly duty teachers if enabled below) receive emails.'),
+                        Toggle::make('notify_duty_roster')
+                            ->label('Include weekly duty roster teachers')
+                            ->default(true),
+                        Toggle::make('notify_school_admins')
+                            ->label('Include school admins / ICT staff')
+                            ->default(true),
+                        Toggle::make('notify_homeroom_teacher')
+                            ->label('Include form master (homeroom teacher)')
+                            ->default(true),
+                        Toggle::make('notify_grade_master')
+                            ->label('Include grade master')
+                            ->default(true),
+                        Toggle::make('notify_session_teacher')
+                            ->label('Include teacher who took roll call')
+                            ->default(true),
+                    ]),
             ]);
     }
 }

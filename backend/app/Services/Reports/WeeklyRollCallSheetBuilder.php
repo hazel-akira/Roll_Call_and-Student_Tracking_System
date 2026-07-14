@@ -6,6 +6,7 @@ use App\Models\AttendanceSession;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Models\WeeklyDutyRoster;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -31,6 +32,10 @@ class WeeklyRollCallSheetBuilder
         $rosterCounts = $this->rosterCountsByClass($sessions);
         $periodGroups = $this->groupSessions($sessions, $rosterCounts);
 
+        $dutyRoster = $school
+            ? WeeklyDutyRoster::resolveForSchoolDate($school->id, $from)
+            : null;
+
         return [
             'school_name' => strtoupper((string) ($school?->name ?? 'SCHOOL')),
             'year' => $to->format('Y'),
@@ -39,6 +44,20 @@ class WeeklyRollCallSheetBuilder
             'to_date' => $to->format('d/m/Y'),
             'period_groups' => $periodGroups,
             'absentees' => $this->collectAbsentees($sessions),
+            'duty_roster' => $dutyRoster ? [
+                'week_label' => $dutyRoster->weekLabel(),
+                'sections' => $dutyRoster->sectionsForDisplay(),
+            ] : null,
+            'duty_teachers' => $dutyRoster
+                ? collect($dutyRoster->sectionsForDisplay())
+                    ->flatMap(fn (array $section) => collect($section['rows'])->pluck('staff'))
+                    ->filter()
+                    ->flatMap(fn (string $names) => preg_split('/,\s*/', $names) ?: [])
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all()
+                : [],
         ];
     }
 

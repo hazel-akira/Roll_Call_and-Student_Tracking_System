@@ -4,116 +4,166 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http as HttpClient;
-
+use Illuminate\Support\Facades\Storage;
 
 class MicrosoftGraphMailService
 {
-    private string $clientId;
-    private string $clientSecret;
-    private string $tenantId;
-    private string $mailFrom;
-
-    public function __construct()
+    public function isConfigured(): bool
     {
-        $this->clientId     = config('services.microsoft_graph.client_id');
-        $this->clientSecret = config('services.microsoft_graph.client_secret');
-        $this->tenantId     = config('services.microsoft_graph.tenant');
-        $this->mailFrom     = config('services.microsoft_graph.mail_from');
+        return filled(config('services.microsoft_graph.client_id'))
+            && filled(config('services.microsoft_graph.client_secret'))
+            && filled(config('services.microsoft_graph.tenant'))
+            && filled(config('services.microsoft_graph.mail_from'));
     }
 
     /**
-     * Get access token from Azure
+     * @param  list<string>  $toEmails
+     * @param  list<array{path: string, name: string, mime: string}>  $attachments
      */
+    public function sendMail(
+        array $toEmails,
+        string $subject,
+        string $htmlBody,
+        array $attachments = [],
+    ): void {
+        $toEmails = array_values(array_unique(array_filter($toEmails)));
+
+        if ($toEmails === []) {
+            return;
+        }
+
+        if (! $this->isConfigured()) {
+            throw new \RuntimeException('Microsoft Graph mail is not configured.');
+        }
+
+        Log::info('GRAPH: Sending roll call report email', [
+            'to' => $toEmails,
+            'subject' => $subject,
+            'attachment_count' => count($attachments),
+        ]);
+
+        $accessToken = $this->getAccessToken();
+        $mailFrom = (string) config('services.microsoft_graph.mail_from');
+
+        $message = [
+            'message' => [
+                'subject' => $subject,
+                'body' => [
+                    'contentType' => 'HTML',
+                    'content' => $htmlBody,
+                ],
+                'toRecipients' => array_map(
+                    static fn (string $email): array => [
+                        'emailAddress' => ['address' => $email],
+                    ],
+                    $toEmails,
+                ),
+                'attachments' => $this->buildAttachments($attachments),
+            ],
+            'saveToSentItems' => true,
+        ];
+
+        $response = Http::withToken($accessToken)
+            ->post(
+                'https://graph.microsoft.com/v1.0/users/'.rawurlencode($mailFrom).'/sendMail',
+                $message,
+            );
+
+        if (! $response->successful()) {
+            Log::error('GRAPH SEND FAILED', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'from' => $mailFrom,
+            ]);
+
+            $graphError = $response->json('error.message') ?? $response->body();
+
+            throw new \RuntimeException(
+                'Microsoft Graph sendMail failed: '.$graphError
+                .'. Ensure the app has Microsoft Graph application permission Mail.Send with admin consent granted.'
+            );
+        }
+
+        Log::info('GRAPH: Email sent successfully', ['to' => $toEmails]);
+    }
+
     private function getAccessToken(): string
     {
-        Log::info('GRAPH: Requesting access token');
+        $tenantId = (string) config('services.microsoft_graph.tenant');
 
         $response = Http::asForm()->post(
-            "https://login.microsoftonline.com/{$this->tenantId}/oauth2/v2.0/token",
+            "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token",
             [
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret,
+                'client_id' => config('services.microsoft_graph.client_id'),
+                'client_secret' => config('services.microsoft_graph.client_secret'),
                 'scope' => 'https://graph.microsoft.com/.default',
                 'grant_type' => 'client_credentials',
             ]
         );
 
-        if (!$response->successful()) {
-            Log::error('GRAPH TOKEN FAILED', [
-                'body' => $response->body()
-            ]);
-            throw new \Exception('Could not get Microsoft Graph token');
+        if (! $response->successful()) {
+            Log::error('GRAPH TOKEN FAILED', ['body' => $response->body()]);
+
+            throw new \RuntimeException('Could not get Microsoft Graph token.');
         }
 
-        $token = $response->json()['access_token'];
+        $token = (string) $response->json('access_token');
+        $roles = $this->decodeTokenRoles($token);
 
-        // Decode JWT payload to inspect granted roles/scopes (base64url)
-        try {
-            $parts = explode('.', $token);
-            $payload = $parts[1] ?? '';
-            $payload .= str_repeat('=', (4 - (strlen($payload) % 4)) % 4);
-            $decoded = json_decode(base64_decode(strtr($payload, '-_', '+/')), true);
-        } catch (\Throwable $e) {
-            $decoded = null;
+        if ($roles !== [] && ! in_array('Mail.Send', $roles, true)) {
+            Log::warning('GRAPH: Token acquired but Mail.Send role is missing', ['roles' => $roles]);
         }
 
-        Log::info('GRAPH: Token acquired', ['aud' => $decoded['aud'] ?? null, 'appid' => $decoded['appid'] ?? $decoded['azp'] ?? null]);
-        Log::info('GRAPH TOKEN CLAIMS', ['roles' => $decoded['roles'] ?? null, 'scp' => $decoded['scp'] ?? null]);
+        if ($roles === []) {
+            Log::warning(
+                'GRAPH: Token has no application roles. Add Microsoft Graph Mail.Send (application) permission and grant admin consent in Azure Entra.'
+            );
+        }
 
         return $token;
     }
 
     /**
-     * Send email via Microsoft Graph
+     * @return list<string>
      */
-    public function sendMail(string $toEmail, string $subject, string $body): void
+    private function decodeTokenRoles(string $token): array
     {
-        Log::info('GRAPH SERVICE CALLED', [
-            'to' => $toEmail,
-            'subject' => $subject,
-        ]);
-
         try {
-            $accessToken = $this->getAccessToken();
+            $parts = explode('.', $token);
+            $payload = $parts[1] ?? '';
+            $payload .= str_repeat('=', (4 - (strlen($payload) % 4)) % 4);
+            $decoded = json_decode(base64_decode(strtr($payload, '-_', '+/')), true);
 
-            $message = [
-                "message" => [
-                    "subject" => $subject,
-                    "body" => [
-                        "contentType" => "HTML",
-                        "content" => $body
-                    ],
-                    "toRecipients" => [
-                        [
-                            "emailAddress" => [
-                                "address" => $toEmail
-                            ]
-                        ]
-                    ]
-                ],
-                "saveToSentItems" => true
-            ];
+            return is_array($decoded['roles'] ?? null) ? $decoded['roles'] : [];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
 
-            Log::info('GRAPH: Sending email now (HTTP)', [
-                'from' => $this->mailFrom,
-                'to' => $toEmail
-            ]);
+    /**
+     * @param  list<array{path: string, name: string, mime: string}>  $attachments
+     * @return list<array<string, mixed>>
+     */
+    private function buildAttachments(array $attachments): array
+    {
+        $payload = [];
 
-            $response = HttpClient::withToken($accessToken)
-                ->post("https://graph.microsoft.com/v1.0/users/{$this->mailFrom}/sendMail", $message);
+        foreach ($attachments as $attachment) {
+            $path = $attachment['path'];
+            $disk = Storage::disk(config('filesystems.default'));
 
-            if (!$response->successful()) {
-                Log::error('GRAPH SEND FAILED', ['status' => $response->status(), 'body' => $response->body()]);
-                throw new \Exception('Microsoft Graph sendMail failed');
+            if (! $disk->exists($path)) {
+                throw new \RuntimeException("Attachment not found: {$path}");
             }
 
-            Log::info('GRAPH: EMAIL SENT SUCCESSFULLY');
-
-        } catch (\Throwable $e) {
-            Log::error('GRAPH FAILED', [
-                'error' => $e->getMessage()
-            ]);
+            $payload[] = [
+                '@odata.type' => '#microsoft.graph.fileAttachment',
+                'name' => $attachment['name'],
+                'contentType' => $attachment['mime'],
+                'contentBytes' => base64_encode($disk->get($path)),
+            ];
         }
+
+        return $payload;
     }
 }

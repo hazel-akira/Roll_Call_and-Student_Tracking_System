@@ -81,6 +81,9 @@ class AttendanceReportService
     public function exportRows(array $filters): Collection
     {
         return $this->recordsQuery($filters)
+            ->join('students', 'students.id', '=', 'attendance_records.student_id')
+            ->orderBy('students.admission_number')
+            ->select('attendance_records.*')
             ->with(['student.classRoom', 'session.subject', 'session.teacher'])
             ->get()
             ->map(function (AttendanceRecord $record): array {

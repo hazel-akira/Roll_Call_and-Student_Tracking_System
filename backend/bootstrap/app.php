@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
 
+        $middleware->web(append: [
+            App\Http\Middleware\RedirectLocalhostAlias::class,
+        ]);
+
         $middleware->alias([
             'auth.jwt' => App\Http\Middleware\AuthenticateJwt::class,
             'role' => App\Http\Middleware\EnsureRole::class,

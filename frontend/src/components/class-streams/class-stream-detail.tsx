@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { sortStudentsByAdmissionNumber } from "@/lib/students/sort-by-admission-number";
 import type { ClassStreamPage } from "@/lib/attendance/load-stream-catalog";
 import type { Student } from "@/types";
 
@@ -11,6 +12,8 @@ function studentRowKey(student: Student): string {
 }
 
 export function ClassStreamDetail({ page }: { page: ClassStreamPage }) {
+  const students = sortStudentsByAdmissionNumber(page.students);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-4">
@@ -50,7 +53,7 @@ export function ClassStreamDetail({ page }: { page: ClassStreamPage }) {
           <h2 className="section-title">Students</h2>
         </div>
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-          {page.students.map((student) => (
+          {students.map((student) => (
             <li
               key={studentRowKey(student)}
               className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"

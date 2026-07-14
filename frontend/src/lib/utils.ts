@@ -19,5 +19,29 @@ export function roleHomePath(roleSlug?: string | null) {
     return "/admin";
   }
 
+  if (roleSlug === "dean_of_students" || roleSlug === "deputy_dean") {
+    return "/duty-roster";
+  }
+
   return "/teacher";
+}
+
+export function isDeanRole(roleSlug?: string | null) {
+  return roleSlug === "dean_of_students" || roleSlug === "deputy_dean";
+}
+
+export function canManageDutyRoster(roleSlug?: string | null) {
+  return (
+    roleSlug === "admin" ||
+    roleSlug === "ict_staff" ||
+    isDeanRole(roleSlug)
+  );
+}
+
+export function canViewReports(roleSlug?: string | null) {
+  return (
+    roleSlug === "admin" ||
+    roleSlug === "ict_staff" ||
+    isDeanRole(roleSlug)
+  );
 }

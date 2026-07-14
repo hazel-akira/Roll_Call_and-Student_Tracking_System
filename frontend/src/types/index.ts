@@ -101,6 +101,52 @@ export type AttendanceSession = {
   records?: AttendanceRecord[];
 };
 
+export type SchoolStaffMember = {
+  id: number;
+  name: string;
+  email: string;
+  job_title?: string | null;
+};
+
+export type DutyRosterEntry = {
+  id?: number;
+  category: string;
+  category_label?: string;
+  location?: string | null;
+  time_slot?: string | null;
+  sort_order?: number;
+  staff_ids?: number[];
+  staff: SchoolStaffMember[];
+};
+
+export type WeeklyDutyRoster = {
+  id: number;
+  school_id: number;
+  week_start: string;
+  week_end?: string | null;
+  week_label: string;
+  entries: DutyRosterEntry[];
+};
+
+export type DutyRosterSummary = {
+  id: number;
+  school_id: number;
+  week_start: string;
+  week_end?: string | null;
+  week_label: string;
+  entries_count: number;
+};
+
+export type DutyRosterMeta = {
+  categories: Record<string, string>;
+  standard_template: Array<{
+    category: string;
+    location: string | null;
+    time_slot: string | null;
+    sort_order: number;
+  }>;
+};
+
 export type NotificationItem = {
   id: number;
   title: string;

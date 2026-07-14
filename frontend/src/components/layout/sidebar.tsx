@@ -8,6 +8,7 @@ import {
   BarChart3,
   BookOpen,
   ClipboardCheck,
+  ClipboardList,
   LayoutDashboard,
   Layers,
   Users,
@@ -23,7 +24,8 @@ const navItems = [
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["teacher", "admin", "ict_staff"] },
   { href: "/class-streams", label: "Class streams", icon: Layers, roles: ["teacher", "admin", "ict_staff"] },
   { href: "/students", label: "Students", icon: Users, roles: ["teacher", "admin", "ict_staff"] },
-  { href: "/reports", label: "Reports", icon: BookOpen, roles: ["admin", "ict_staff"] },
+  { href: "/duty-roster", label: "Duty roster", icon: ClipboardList, roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"] },
+  { href: "/reports", label: "Reports", icon: BookOpen, roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"] },
 ] as const;
 
 export function Sidebar({

@@ -95,8 +95,7 @@ class RollCallMemoBuilder
         return Student::query()
             ->where('class_id', $classId)
             ->where('status', 'active')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
+            ->orderBy('admission_number')
             ->get();
     }
 

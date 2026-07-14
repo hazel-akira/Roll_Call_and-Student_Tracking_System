@@ -66,7 +66,7 @@ class StudentController extends Controller
                 },
             )
             ->when($validated['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
-            ->orderBy('last_name')
+            ->orderBy('admission_number')
             ->paginate($validated['per_page'] ?? 15);
 
         return response()->json([
@@ -88,7 +88,7 @@ class StudentController extends Controller
                     ->orWhere('admission_number', 'like', '%'.$admissionNumber);
             });
 
-        $localMatches = $localQuery->orderBy('last_name')->get();
+        $localMatches = $localQuery->orderBy('admission_number')->get();
         $localStudent = $localMatches->first(function (Student $student) use ($admissionNumber): bool {
             return strcasecmp($student->admission_number, $admissionNumber) === 0;
         }) ?? ($localMatches->count() === 1 ? $localMatches->first() : null);

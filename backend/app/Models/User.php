@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\RoleSlugs;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -93,8 +94,9 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return match ($panel->getId()) {
-            'admin' => in_array($this->role?->slug, ['admin', 'ict_staff'], true),
-            'teacher' => in_array($this->role?->slug, ['teacher', 'admin', 'ict_staff'], true),
+            'admin' => in_array($this->role?->slug, RoleSlugs::allSchoolAccessSlugs(), true),
+            'teacher' => in_array($this->role?->slug, [RoleSlugs::TEACHER, ...RoleSlugs::allSchoolAccessSlugs()], true),
+            'dean' => in_array($this->role?->slug, [...RoleSlugs::deanSlugs(), ...RoleSlugs::allSchoolAccessSlugs()], true),
             default => false,
         };
     }

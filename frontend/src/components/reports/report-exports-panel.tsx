@@ -29,9 +29,11 @@ function asNotificationList(value: unknown): NotificationItem[] {
 }
 
 export function ReportExportsPanel({
+  refreshKey = 0,
   pollForNewExport = false,
   onPollComplete,
 }: {
+  refreshKey?: number;
   pollForNewExport?: boolean;
   onPollComplete?: () => void;
 }) {
@@ -82,7 +84,7 @@ export function ReportExportsPanel({
     return () => {
       cancelled = true;
     };
-  }, [loadExports, refreshToken]);
+  }, [loadExports, refreshKey, refreshToken]);
 
   useEffect(() => {
     if (!pollForNewExport) {

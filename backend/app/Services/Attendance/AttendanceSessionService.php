@@ -11,12 +11,15 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AttendanceSessionService
 {
-    public function __construct(private readonly AuditLogger $auditLogger)
-    {
+    public function __construct(
+        private readonly AuditLogger $auditLogger,
+        private readonly RollCallReportService $rollCallReportService,
+    ) {
     }
 
     public function create(array $payload, User $actor): AttendanceSession
@@ -48,7 +51,10 @@ class AttendanceSessionService
         return $session->fresh(['classRoom', 'subject', 'teacher', 'records.student']);
     }
 
-    public function upsertRecords(AttendanceSession $session, array $records, User $actor): AttendanceSession
+    /**
+     * @return array{session: AttendanceSession, report_sent: bool}
+     */
+    public function upsertRecords(AttendanceSession $session, array $records, User $actor, bool $rosterComplete = false): array
     {
         if ($session->status === 'closed') {
             throw ValidationException::withMessages([
@@ -134,7 +140,42 @@ class AttendanceSessionService
             ],
         );
 
-        return $session->fresh(['classRoom', 'subject', 'teacher', 'records.student']);
+        $session = $session->fresh(['classRoom.school', 'classRoom.homeroomTeacher', 'subject', 'teacher', 'records.student']);
+        $reportSent = false;
+
+        if ($this->shouldSendRollCallReport($session, $records, $rosterComplete)) {
+            try {
+                $this->rollCallReportService->generateAndSend($session);
+                $reportSent = true;
+            } catch (\Throwable $exception) {
+                Log::error('Roll call report email failed after saving attendance', [
+                    'session_id' => $session->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        } else {
+            $activeCount = Student::query()
+                ->where('class_id', $session->class_id)
+                ->where('status', 'active')
+                ->count();
+            $markedCount = AttendanceRecord::query()
+                ->where('attendance_session_id', $session->id)
+                ->distinct()
+                ->count('student_id');
+
+            Log::info('Roll call report not sent: roster incomplete', [
+                'session_id' => $session->id,
+                'teacher_id' => $session->teacher_id,
+                'marked_count' => $markedCount,
+                'active_student_count' => $activeCount,
+                'roster_complete' => $rosterComplete,
+            ]);
+        }
+
+        return [
+            'session' => $session,
+            'report_sent' => $reportSent,
+        ];
     }
 
     public function close(AttendanceSession $session, User $actor): AttendanceSession
@@ -191,5 +232,53 @@ class AttendanceSessionService
             'late' => 'on_leave',
             default => $storedStatus,
         };
+    }
+
+    private function allActiveStudentsMarked(AttendanceSession $session): bool
+    {
+        $activeStudentIds = Student::query()
+            ->where('class_id', $session->class_id)
+            ->where('status', 'active')
+            ->pluck('id');
+
+        if ($activeStudentIds->isEmpty()) {
+            return false;
+        }
+
+        $markedCount = AttendanceRecord::query()
+            ->where('attendance_session_id', $session->id)
+            ->whereIn('student_id', $activeStudentIds)
+            ->distinct()
+            ->count('student_id');
+
+        return $markedCount >= $activeStudentIds->count();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $records
+     */
+    private function shouldSendRollCallReport(AttendanceSession $session, array $records, bool $rosterComplete): bool
+    {
+        if ($this->allActiveStudentsMarked($session)) {
+            return true;
+        }
+
+        if (! $rosterComplete || $records === []) {
+            return false;
+        }
+
+        $studentIdsInRequest = collect($records)->pluck('student_id')->unique();
+
+        if ($studentIdsInRequest->isEmpty()) {
+            return false;
+        }
+
+        $markedCount = AttendanceRecord::query()
+            ->where('attendance_session_id', $session->id)
+            ->whereIn('student_id', $studentIdsInRequest)
+            ->distinct()
+            ->count('student_id');
+
+        return $markedCount >= $studentIdsInRequest->count();
     }
 }

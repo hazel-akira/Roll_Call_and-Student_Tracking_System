@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\School;
+use App\Support\AdmissionNumberSort;
 use App\Models\SchoolClass;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -1855,19 +1856,23 @@ class DynamicsService
                 schoolName: $schoolName,
             );
             if ($byRoom !== []) {
-                return $this->applySchoolEmailDomainFilter($byRoom, $schoolName);
+                return AdmissionNumberSort::sortRows(
+                    $this->applySchoolEmailDomainFilter($byRoom, $schoolName)
+                );
             }
         }
 
-        return $this->applySchoolEmailDomainFilter(
-            $this->getStudentsByClassNameMatch(
-                entity: $entity,
-                cols: $cols,
-                schoolName: $schoolName,
-                gradeLevel: $gradeLevel,
-                stream: $stream,
-            ),
-            $schoolName,
+        return AdmissionNumberSort::sortRows(
+            $this->applySchoolEmailDomainFilter(
+                $this->getStudentsByClassNameMatch(
+                    entity: $entity,
+                    cols: $cols,
+                    schoolName: $schoolName,
+                    gradeLevel: $gradeLevel,
+                    stream: $stream,
+                ),
+                $schoolName,
+            )
         );
     }
 

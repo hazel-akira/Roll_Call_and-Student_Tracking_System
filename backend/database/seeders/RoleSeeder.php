@@ -25,6 +25,16 @@ class RoleSeeder extends Seeder
                 'slug' => 'ict_staff',
                 'description' => 'Support staff who manage integrations, technical operations, and audit visibility.',
             ],
+            [
+                'name' => 'Dean of Students',
+                'slug' => 'dean_of_students',
+                'description' => 'Senior staff who manage weekly duty rosters, report recipients, and view attendance reports for assigned schools.',
+            ],
+            [
+                'name' => 'Deputy Dean',
+                'slug' => 'deputy_dean',
+                'description' => 'Deputy dean with the same roll call management and reporting access as the dean of students.',
+            ],
         ], ['slug'], ['name', 'description']);
     }
 }

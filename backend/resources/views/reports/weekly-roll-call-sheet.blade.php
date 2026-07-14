@@ -83,13 +83,27 @@
             width: 170px;
             border: 1px solid #000;
             padding: 8px;
-            font-size: 9px;
+            font-size: 8px;
             min-height: 220px;
         }
 
-        .duty-title {
+        .duty-week-label {
             font-weight: bold;
+            text-transform: uppercase;
             margin-bottom: 8px;
+            font-size: 9px;
+        }
+
+        .duty-section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 8px;
+            margin-bottom: 2px;
+        }
+
+        .duty-row {
+            margin-bottom: 4px;
+            line-height: 1.35;
         }
 
         .duty-line {
@@ -209,9 +223,32 @@
             </td>
             <td style="width: 180px; padding-left: 8px;">
                 <div class="duty-panel">
-                    <div class="duty-title">TEACHERS ON DUTY:</div>
-                    <div class="duty-line">1.</div>
-                    <div class="duty-line">2.</div>
+                    @if (! empty($duty_roster))
+                        <div class="duty-week-label">Weekly Duty: {{ $duty_roster['week_label'] }}</div>
+                        @foreach ($duty_roster['sections'] as $section)
+                            <div class="duty-section-title">{{ $section['title'] }}</div>
+                            @foreach ($section['rows'] as $row)
+                                <div class="duty-row">
+                                    @if ($row['location'])
+                                        <strong>{{ $row['location'] }}:</strong>
+                                    @endif
+                                    @if ($row['time_slot'])
+                                        <em>{{ $row['time_slot'] }}</em>
+                                    @endif
+                                    {{ $row['staff'] ?: '—' }}
+                                </div>
+                            @endforeach
+                        @endforeach
+                    @else
+                        <div class="duty-section-title">Teachers on Duty:</div>
+                        @php($dutyTeachers = $duty_teachers ?? [])
+                        @foreach ($dutyTeachers as $index => $teacherName)
+                            <div class="duty-line">{{ $index + 1 }}. {{ $teacherName }}</div>
+                        @endforeach
+                        @for ($slot = count($dutyTeachers); $slot < 2; $slot++)
+                            <div class="duty-line">{{ $slot + 1 }}.</div>
+                        @endfor
+                    @endif
 
                     <div class="signature-block">
                         <strong>ROLL CALL BY:</strong>

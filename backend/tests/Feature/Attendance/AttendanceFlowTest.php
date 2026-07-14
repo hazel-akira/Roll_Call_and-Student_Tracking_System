@@ -62,6 +62,7 @@ class AttendanceFlowTest extends TestCase
                     'remark' => 'On time',
                 ],
             ],
+            'roster_complete' => true,
         ], $this->authHeaders($teacher));
 
         $upsertResponse->assertOk();

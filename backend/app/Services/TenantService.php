@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
+use App\Support\RoleSlugs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -68,7 +69,7 @@ class TenantService
     }
 
     /**
-     * Teachers are always scoped; admins/ICT scope only when a school is selected.
+     * Teachers and dean staff are always scoped; admins/ICT scope only when a school is selected.
      */
     public function shouldApplySchoolScope(?User $user = null, ?Request $request = null): bool
     {
@@ -109,7 +110,7 @@ class TenantService
     public function scopeTeacherAssignedClasses(Builder $query, ?User $user = null): Builder
     {
         $user = $user ?? Auth::user();
-        if (! $user || ! $this->isTenantUser($user)) {
+        if (! $user || $user->role?->slug !== RoleSlugs::TEACHER) {
             return $query;
         }
 
@@ -197,7 +198,7 @@ class TenantService
     }
 
     /**
-     * Teachers are tenant users restricted to assigned schools.
+     * Teachers and dean staff are restricted to assigned schools.
      */
     public function isTenantUser($user = null): bool
     {
@@ -206,7 +207,7 @@ class TenantService
             return false;
         }
 
-        return $user->role?->slug === 'teacher';
+        return in_array($user->role?->slug, RoleSlugs::schoolScopedSlugs(), true);
     }
 
     /**
@@ -219,7 +220,7 @@ class TenantService
             return false;
         }
 
-        return in_array($user->role?->slug, ['admin', 'ict_staff'], true);
+        return in_array($user->role?->slug, RoleSlugs::allSchoolAccessSlugs(), true);
     }
 
     /**
@@ -236,7 +237,7 @@ class TenantService
             return [];
         }
 
-        if ($user->role?->slug !== 'teacher') {
+        if (! in_array($user->role?->slug, RoleSlugs::schoolScopedSlugs(), true)) {
             return [];
         }
 

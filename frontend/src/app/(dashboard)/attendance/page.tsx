@@ -543,8 +543,10 @@ export default function AttendancePage() {
               const response = await apiClient.put<{
                 data: AttendanceSession;
                 message?: string;
+                report_sent?: boolean;
               }>(`/attendance-sessions/${sessionId}/records`, {
                 records,
+                roster_complete: true,
               });
 
               const saved = response.data?.data;

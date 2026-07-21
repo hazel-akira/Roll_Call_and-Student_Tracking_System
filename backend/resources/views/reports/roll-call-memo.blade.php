@@ -4,149 +4,15 @@
     <meta charset="UTF-8">
     <title>Roll Call Memo</title>
     <style>
-        @page {
-            margin: 24px 28px 40px;
+        @include('reports.partials.report-styles')
+
+        .memo-page + .memo-page {
+            page-break-before: always;
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 10px;
-            color: #000;
-            margin: 0;
-        }
-
-        .memo-page {
-            page-break-after: always;
-        }
-
-        .memo-page:last-child {
-            page-break-after: auto;
-        }
-
-        .school-name {
-            text-align: center;
-            font-size: 13px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: 0 0 6px;
-        }
-
-        .memo-title {
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            margin: 0 0 8px;
-        }
-
-        .term-line {
-            text-align: center;
-            font-size: 10px;
-            margin: 0 0 10px;
-        }
-
-        .meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-        }
-
-        .meta-table td {
-            border: 1px solid #000;
-            padding: 5px 8px;
-            vertical-align: top;
-            width: 50%;
-        }
-
-        .meta-label {
-            font-weight: bold;
-        }
-
-        .roll-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .roll-table th,
-        .roll-table td {
-            border: 1px solid #000;
-            padding: 4px 5px;
-            vertical-align: middle;
-            word-wrap: break-word;
-        }
-
-        .roll-table thead th {
-            text-align: center;
-            font-weight: bold;
-            background: #fff;
-        }
-
-        .col-student {
-            width: 36%;
-        }
-
-        .col-remark {
-            width: 12%;
-        }
-
-        .col-far {
-            width: 8%;
-        }
-
-        .subhead {
-            font-size: 9px;
-            font-weight: normal;
-        }
-
-        .status-cell {
-            text-align: center;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .time-in {
-            font-size: 8px;
-            font-weight: normal;
-            font-style: italic;
-            margin-top: 2px;
-        }
-
-        .footer {
-            position: fixed;
-            bottom: 10px;
-            left: 28px;
-            right: 28px;
-            font-size: 9px;
-            border-top: 1px solid #000;
-            padding-top: 4px;
-        }
-
-        .footer-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .footer-table td {
-            border: none;
-            padding: 0;
-        }
-
-        .footer-left {
-            text-align: left;
-            font-weight: bold;
-        }
-
-        .footer-center {
-            text-align: center;
-        }
-
-        .footer-right {
-            text-align: right;
-        }
+        .col-student { width: 36%; }
+        .col-remark { width: 12%; }
+        .col-far { width: 8%; }
     </style>
 </head>
 <body>
@@ -157,9 +23,12 @@
     @forelse ($memos as $memo)
         @foreach ($memo['pages'] as $pageIndex => $page)
             <div class="memo-page">
-                <p class="school-name">{{ $memo['school_name'] }}</p>
-                <p class="memo-title">{{ $memo['title'] }}</p>
-                <p class="term-line">{{ $memo['term_line'] }}</p>
+                @include('reports.partials.school-header', [
+                    'schoolName' => $memo['school_name'],
+                    'schoolLogo' => $memo['school_logo'] ?? null,
+                    'reportTitle' => $memo['title'],
+                    'subtitle' => $memo['term_line'],
+                ])
 
                 <table class="meta-table">
                     <tr>
@@ -180,7 +49,7 @@
                     </tr>
                 </table>
 
-                <table class="roll-table">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th class="col-student">Students</th>
@@ -225,26 +94,67 @@
                         @endforeach
                     </tbody>
                 </table>
+
+                @if ($pageIndex === count($memo['pages']) - 1)
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2">Summary</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Total Students</td>
+                                <td class="summary-value">{{ $memo['student_count'] ?? 0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Present</td>
+                                <td class="summary-value">{{ $memo['summary']['total_present'] ?? 0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Absent</td>
+                                <td class="summary-value">{{ $memo['summary']['total_absent'] ?? 0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Late</td>
+                                <td class="summary-value">{{ $memo['summary']['total_late'] ?? 0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Excused</td>
+                                <td class="summary-value">{{ $memo['summary']['total_excused'] ?? 0 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                @endif
             </div>
         @endforeach
     @empty
         <div class="memo-page">
-            <p class="memo-title">ROLL CALL MEMO</p>
-            <p class="term-line">No attendance sessions matched the selected filters.</p>
+            @include('reports.partials.school-header', [
+                'schoolName' => 'School',
+                'schoolLogo' => null,
+                'reportTitle' => 'ROLL CALL MEMO',
+                'subtitle' => null,
+            ])
+            <p style="text-align: center; color: #64748b;">No attendance sessions matched the selected filters.</p>
         </div>
     @endforelse
 
-    <div class="footer">
-        <table class="footer-table">
+    <div class="report-footer">
+        <table class="report-footer-table">
             <tr>
                 <td class="footer-left">ROLL CALL MEMO</td>
                 <td class="footer-center">{{ $generatedAt }}</td>
                 <td class="footer-right">
                     <script type="text/php">
                         if (isset($pdf)) {
-                            $text = "Page {PAGE_NUM} of {PAGE_COUNT}";
-                            $font = $fontMetrics->getFont("DejaVu Sans");
-                            $pdf->page_text(500, 820, $text, $font, 9, [0, 0, 0]);
+                            $font = $fontMetrics->getFont('DejaVu Sans');
+                            $size = 8;
+                            $color = [100 / 255, 116 / 255, 139 / 255];
+                            $text = 'Page {PAGE_NUM} of {PAGE_COUNT}';
+                            $x = $pdf->get_width() - 95;
+                            $y = $pdf->get_height() - 20;
+                            $pdf->page_text($x, $y, $text, $font, $size, $color);
                         }
                     </script>
                 </td>

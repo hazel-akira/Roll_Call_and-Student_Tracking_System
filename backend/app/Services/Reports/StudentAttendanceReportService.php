@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\Models\AttendanceRecord;
 use App\Models\Student;
+use App\Support\ReportBranding;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -92,6 +93,7 @@ class StudentAttendanceReportService
                 'school' => $student->classRoom?->school?->name,
                 'status' => $student->status,
             ],
+            'school_logo' => ReportBranding::logoDataUri($student->classRoom?->school),
             'filters' => [
                 'from' => $filters['from'] ?? null,
                 'to' => $filters['to'] ?? null,

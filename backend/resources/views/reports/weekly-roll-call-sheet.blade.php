@@ -4,39 +4,11 @@
     <meta charset="UTF-8">
     <title>Weekly Roll Call Sheet</title>
     <style>
-        @page {
-            margin: 20px 24px;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 10px;
-            color: #000;
-            margin: 0;
-        }
-
-        .school-header {
-            text-align: center;
-            font-size: 14px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: 0 0 4px;
-        }
-
-        .year-header {
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            margin: 0 0 10px;
-        }
+        @include('reports.partials.report-styles')
 
         .week-line {
             margin-bottom: 10px;
-            font-size: 10px;
+            font-size: 9.5px;
         }
 
         .week-line span {
@@ -52,6 +24,8 @@
 
         .sheet-layout > tbody > tr > td {
             vertical-align: top;
+            border: none;
+            padding: 0;
         }
 
         .attendance-table {
@@ -61,14 +35,14 @@
 
         .attendance-table th,
         .attendance-table td {
-            border: 1px solid #000;
-            padding: 5px 6px;
+            border: 1px solid #94a3b8;
+            padding: 4px 5px;
             text-align: center;
         }
 
         .attendance-table th {
             font-weight: bold;
-            background: #fff;
+            background: #e2e8f0;
         }
 
         .attendance-table .class-col {
@@ -77,11 +51,13 @@
 
         .attendance-table .total-row td {
             font-weight: bold;
+            background: #f1f5f9;
         }
 
         .duty-panel {
             width: 170px;
-            border: 1px solid #000;
+            border: 1px solid #94a3b8;
+            background: #f8fafc;
             padding: 8px;
             font-size: 8px;
             min-height: 220px;
@@ -92,6 +68,7 @@
             text-transform: uppercase;
             margin-bottom: 8px;
             font-size: 9px;
+            color: #1e3a5f;
         }
 
         .duty-section-title {
@@ -99,6 +76,7 @@
             text-transform: uppercase;
             margin-top: 8px;
             margin-bottom: 2px;
+            color: #334155;
         }
 
         .duty-row {
@@ -117,7 +95,7 @@
 
         .signature-line {
             margin-top: 24px;
-            border-top: 1px solid #000;
+            border-top: 1px solid #64748b;
             padding-top: 4px;
         }
 
@@ -129,6 +107,7 @@
             font-weight: bold;
             margin-bottom: 6px;
             font-size: 10px;
+            color: #1e3a5f;
         }
 
         .absentee-table {
@@ -138,26 +117,32 @@
 
         .absentee-table th,
         .absentee-table td {
-            border: 1px solid #000;
+            border: 1px solid #94a3b8;
             padding: 6px 8px;
             text-align: left;
         }
 
         .absentee-table th {
             font-weight: bold;
+            background: #e2e8f0;
         }
 
         .na-row td {
             text-align: center;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            height: 48px;
+            height: 42px;
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
-    <p class="school-header">{{ $sheet['school_name'] }}</p>
-    <p class="year-header">YEAR {{ $sheet['year'] }}</p>
+    @include('reports.partials.school-header', [
+        'schoolName' => $sheet['school_name'],
+        'schoolLogo' => $sheet['school_logo'] ?? null,
+        'reportTitle' => 'YEAR '.$sheet['year'].' — WEEKLY ROLL CALL SHEET',
+        'subtitle' => 'Week '.$sheet['week_number'].' · '.$sheet['from_date'].' to '.$sheet['to_date'],
+    ])
 
     <div class="week-line">
         <span><strong>WEEK</strong> {{ $sheet['week_number'] }}</span>
@@ -223,9 +208,10 @@
             </td>
             <td style="width: 180px; padding-left: 8px;">
                 <div class="duty-panel">
-                    @if (! empty($duty_roster))
-                        <div class="duty-week-label">Weekly Duty: {{ $duty_roster['week_label'] }}</div>
-                        @foreach ($duty_roster['sections'] as $section)
+                    @if (! empty($duty_roster) || ! empty($sheet['duty_roster']))
+                        @php($roster = $duty_roster ?? $sheet['duty_roster'])
+                        <div class="duty-week-label">Weekly Duty: {{ $roster['week_label'] }}</div>
+                        @foreach ($roster['sections'] as $section)
                             <div class="duty-section-title">{{ $section['title'] }}</div>
                             @foreach ($section['rows'] as $row)
                                 <div class="duty-row">
@@ -241,7 +227,7 @@
                         @endforeach
                     @else
                         <div class="duty-section-title">Teachers on Duty:</div>
-                        @php($dutyTeachers = $duty_teachers ?? [])
+                        @php($dutyTeachers = $duty_teachers ?? ($sheet['duty_teachers'] ?? []))
                         @foreach ($dutyTeachers as $index => $teacherName)
                             <div class="duty-line">{{ $index + 1 }}. {{ $teacherName }}</div>
                         @endforeach
@@ -285,6 +271,16 @@
                     </tr>
                 @endforelse
             </tbody>
+        </table>
+    </div>
+
+    <div class="report-footer">
+        <table class="report-footer-table">
+            <tr>
+                <td class="footer-left">WEEKLY ROLL CALL SHEET</td>
+                <td class="footer-center">{{ now()->format('l, F j, Y g:i A') }}</td>
+                <td class="footer-right">{{ $sheet['school_name'] }}</td>
+            </tr>
         </table>
     </div>
 </body>

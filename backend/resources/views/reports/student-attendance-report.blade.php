@@ -4,21 +4,33 @@
     <meta charset="UTF-8">
     <title>Student Attendance Report</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111827; }
-        h1 { font-size: 18px; margin: 0 0 4px; }
-        .meta { margin-bottom: 16px; color: #4b5563; }
-        .meta p { margin: 2px 0; }
-        .summary { width: 100%; margin-bottom: 16px; border-collapse: collapse; }
-        .summary td { border: 1px solid #d1d5db; padding: 6px 8px; }
-        .summary .label { background: #f3f4f6; font-weight: bold; width: 18%; }
-        table.records { width: 100%; border-collapse: collapse; }
-        table.records th, table.records td { border: 1px solid #d1d5db; padding: 5px 6px; text-align: left; vertical-align: top; }
-        table.records th { background: #f3f4f6; }
-        .empty { padding: 12px; border: 1px dashed #d1d5db; color: #6b7280; }
+        @include('reports.partials.report-styles')
+
+        .meta {
+          
+            color: #475569;
+        }
+
+        .meta p {
+            margin: 2px 0;
+        }
+
+        .empty {
+            padding: 12px;
+            border: 1px dashed #cbd5e1;
+            color: #64748b;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Student Attendance Report</h1>
+    @include('reports.partials.school-header', [
+        'schoolName' => $report['student']['school'] ?? 'School',
+        'schoolLogo' => $report['school_logo'] ?? null,
+        'reportTitle' => 'Student Attendance Report',
+        'subtitle' => $report['student']['full_name'] ?? null,
+    ])
+
     <div class="meta">
         <p><strong>{{ $report['student']['full_name'] ?? 'Student' }}</strong></p>
         <p>Admission #: {{ $report['student']['admission_number'] ?? '—' }}</p>
@@ -34,37 +46,44 @@
         <p>Generated: {{ $generated_at }}</p>
     </div>
 
-    <table class="summary">
-        <tr>
-            <td class="label">Total records</td>
-            <td>{{ $report['summary']['records'] ?? 0 }}</td>
-            <td class="label">Present</td>
-            <td>{{ $report['summary']['present'] ?? 0 }}</td>
-            <td class="label">Attendance rate</td>
-            <td>{{ $report['summary']['attendance_rate'] ?? 0 }}%</td>
-        </tr>
-        <tr>
-            <td class="label">Absent</td>
-            <td>{{ $report['summary']['absent'] ?? 0 }}</td>
-            <td class="label">Missing</td>
-            <td>{{ $report['summary']['missing'] ?? 0 }}</td>
-            <td class="label">Late</td>
-            <td>{{ $report['summary']['late'] ?? 0 }}</td>
-        </tr>
-        <tr>
-            <td class="label">Sick</td>
-            <td>{{ $report['summary']['sick'] ?? 0 }}</td>
-            <td class="label">On leave</td>
-            <td>{{ $report['summary']['on_leave'] ?? 0 }}</td>
-            <td class="label">Excused</td>
-            <td>{{ $report['summary']['excused'] ?? 0 }}</td>
-        </tr>
+    <table class="summary-table" style="width: 100%; margin: 0 0 14px;">
+        <thead>
+            <tr>
+                <th colspan="6">Attendance Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="meta-label">Total records</td>
+                <td class="summary-value">{{ $report['summary']['records'] ?? 0 }}</td>
+                <td class="meta-label">Present</td>
+                <td class="summary-value">{{ $report['summary']['present'] ?? 0 }}</td>
+                <td class="meta-label">Attendance rate</td>
+                <td class="summary-value">{{ $report['summary']['attendance_rate'] ?? 0 }}%</td>
+            </tr>
+            <tr>
+                <td class="meta-label">Absent</td>
+                <td class="summary-value">{{ $report['summary']['absent'] ?? 0 }}</td>
+                <td class="meta-label">Missing</td>
+                <td class="summary-value">{{ $report['summary']['missing'] ?? 0 }}</td>
+                <td class="meta-label">Late</td>
+                <td class="summary-value">{{ $report['summary']['late'] ?? 0 }}</td>
+            </tr>
+            <tr>
+                <td class="meta-label">Sick</td>
+                <td class="summary-value">{{ $report['summary']['sick'] ?? 0 }}</td>
+                <td class="meta-label">On leave</td>
+                <td class="summary-value">{{ $report['summary']['on_leave'] ?? 0 }}</td>
+                <td class="meta-label">Excused</td>
+                <td class="summary-value">{{ $report['summary']['excused'] ?? 0 }}</td>
+            </tr>
+        </tbody>
     </table>
 
     @if (($report['rows'] ?? collect())->isEmpty())
         <p class="empty">No attendance records found for this student in the selected period.</p>
     @else
-        <table class="records">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -84,12 +103,22 @@
                         <td>{{ $row['class'] }}</td>
                         <td>{{ $row['subject'] }}</td>
                         <td>{{ $row['teacher'] }}</td>
-                        <td>{{ $row['status'] }}</td>
+                        <td class="status-cell">{{ $row['status'] }}</td>
                         <td>{{ $row['remark'] }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @endif
+
+    <div class="report-footer">
+        <table class="report-footer-table">
+            <tr>
+                <td class="footer-left">STUDENT ATTENDANCE REPORT</td>
+                <td class="footer-center">{{ $generated_at }}</td>
+                <td class="footer-right">{{ $report['student']['admission_number'] ?? '' }}</td>
+            </tr>
+        </table>
+    </div>
 </body>
 </html>

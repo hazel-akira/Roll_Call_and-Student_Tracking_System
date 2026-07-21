@@ -10,7 +10,7 @@ return [
     'boy_roll_end' => (int) env('ROLL_CALL_BOY_END', 7),
     'girl_roll_start' => (int) env('ROLL_CALL_GIRL_START', 14),
     'girl_roll_end' => (int) env('ROLL_CALL_GIRL_END', 40),
-    'rows_per_page' => (int) env('ROLL_CALL_ROWS_PER_PAGE', 16),
+    'rows_per_page' => (int) env('ROLL_CALL_ROWS_PER_PAGE', 30),
   ],
 
   'roll_call_report' => [

@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\WeeklyDutyRoster;
+use App\Support\ReportBranding;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -38,6 +39,7 @@ class WeeklyRollCallSheetBuilder
 
         return [
             'school_name' => strtoupper((string) ($school?->name ?? 'SCHOOL')),
+            'school_logo' => ReportBranding::logoDataUri($school),
             'year' => $to->format('Y'),
             'week_number' => $from->isoWeek(),
             'from_date' => $from->format('d/m/Y'),

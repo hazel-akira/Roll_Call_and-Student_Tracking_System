@@ -4,16 +4,18 @@
     <meta charset="UTF-8">
     <title>Attendance Summary</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #111827; }
-        h1 { font-size: 18px; margin-bottom: 12px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
-        th { background: #f3f4f6; }
+        @include('reports.partials.report-styles')
     </style>
 </head>
 <body>
-    <h1>Attendance Summary</h1>
-    <table>
+    @include('reports.partials.school-header', [
+        'schoolName' => $school_name ?? 'School',
+        'schoolLogo' => $school_logo ?? null,
+        'reportTitle' => 'Attendance Summary',
+        'subtitle' => $subtitle ?? null,
+    ])
+
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Session Date</th>
@@ -27,7 +29,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($rows as $row)
+            @forelse ($rows as $row)
                 <tr>
                     <td>{{ $row['session_date'] }}</td>
                     <td>{{ $row['class'] }}</td>
@@ -35,11 +37,25 @@
                     <td>{{ $row['admission_number'] }}</td>
                     <td>{{ $row['subject'] }}</td>
                     <td>{{ $row['teacher'] }}</td>
-                    <td>{{ $row['status'] }}</td>
+                    <td class="status-cell">{{ $row['status'] }}</td>
                     <td>{{ $row['remark'] }}</td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #64748b;">No records found.</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
+
+    <div class="report-footer">
+        <table class="report-footer-table">
+            <tr>
+                <td class="footer-left">ATTENDANCE SUMMARY</td>
+                <td class="footer-center">{{ now()->format('l, F j, Y g:i A') }}</td>
+                <td class="footer-right"></td>
+            </tr>
+        </table>
+    </div>
 </body>
 </html>

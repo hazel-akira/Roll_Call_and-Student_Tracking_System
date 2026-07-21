@@ -20,6 +20,7 @@ class School extends Model
         'is_junior',
         'active',
         'dynamics_id',
+        'logo_path',
     ];
 
     protected $casts = [

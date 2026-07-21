@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
 use App\Models\Student;
+use App\Support\ReportBranding;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -62,16 +63,19 @@ class RollCallMemoBuilder
             );
         }
 
-        $rowsPerPage = max(1, (int) config('reports.roll_call_memo.rows_per_page', 16));
+        $rowsPerPage = max(1, (int) config('reports.roll_call_memo.rows_per_page', 28));
+        $summary = $this->buildSummary($rows);
 
         return [
             'school_name' => strtoupper((string) ($school?->name ?? 'SCHOOL')),
+            'school_logo' => ReportBranding::logoDataUri($school),
             'title' => 'ROLL CALL MEMO',
             'term_line' => $this->termLine($subject, $class?->academic_year, $sessionDate),
             'student_count' => $students->count(),
             'department' => strtoupper((string) ($subject?->name ?? 'ROLL CALL')),
             'stream_class' => $this->formatStreamClass($class?->name, $class?->grade_level, $class?->section),
             'date_formatted' => $sessionDate->format('l, F j, Y'),
+            'summary' => $summary,
             'pages' => array_map(
                 static fn (array $chunk): array => ['rows' => $chunk],
                 array_chunk($rows, $rowsPerPage),
@@ -116,6 +120,37 @@ class RollCallMemoBuilder
             'time_in' => in_array($status, ['absent', 'late'], true) ? $timeIn : '',
             'far' => '',
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array{total_present: int, total_absent: int, total_excused: int, total_late: int}
+     */
+    private function buildSummary(array $rows): array
+    {
+        $summary = [
+            'total_present' => 0,
+            'total_absent' => 0,
+            'total_excused' => 0,
+            'total_late' => 0,
+        ];
+
+        foreach ($rows as $row) {
+            if ($row['present'] !== '') {
+                $summary['total_present']++;
+            }
+            if ($row['absent'] !== '') {
+                $summary['total_absent']++;
+            }
+            if ($row['excused'] !== '') {
+                $summary['total_excused']++;
+            }
+            if ($row['late'] !== '') {
+                $summary['total_late']++;
+            }
+        }
+
+        return $summary;
     }
 
     private function termLine(?object $subject, ?string $academicYear, Carbon $sessionDate): string

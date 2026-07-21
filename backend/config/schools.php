@@ -39,6 +39,18 @@ return [
     ],
 
     /*
+     * Default report logos under public/images, keyed by school code.
+     * Uploaded schools.logo_path values still take precedence when present.
+     */
+    'default_logos' => [
+        'PS' => 'images/ps.png',
+        'PGS' => 'images/pgslogo.webp',
+        'PJA' => 'images/pjaogo.png',
+        'PGJA' => 'images/pgjalogo.webp',
+        'SPTA' => 'images/ST PAULS THOMAS EMBLEM.png',
+    ],
+
+    /*
      * Exact ses_schoolname values in Dataverse when they differ from the local school name.
      */
     'dynamics_names' => [

@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\Models\AttendanceSession;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Support\Facades\Storage;
 
 class AttendancePdfGenerator
@@ -30,14 +31,14 @@ class AttendancePdfGenerator
         $template = $this->templateResolver->resolve($schoolId);
 
         if ($template === 'weekly_roll_call_sheet') {
-            $content = Pdf::loadView(
+            $content = $this->makePdf(
                 'reports.weekly-roll-call-sheet',
                 [
                     'sheet' => $this->weeklySheetBuilder->build($filters),
                 ]
             )->output();
         } else {
-            $content = Pdf::loadView(
+            $content = $this->makePdf(
                 'reports.roll-call-memo',
                 [
                     'memos' => $this->memoBuilder->buildPages($filters),
@@ -63,7 +64,7 @@ class AttendancePdfGenerator
             'records.student',
         ]);
 
-        $content = Pdf::loadView(
+        $content = $this->makePdf(
             'reports.roll-call-memo',
             [
                 'memos' => [
@@ -77,6 +78,16 @@ class AttendancePdfGenerator
             $session->id,
             now()->format('YmdHis')
         ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function makePdf(string $view, array $data): DomPdf
+    {
+        return Pdf::loadView($view, $data)
+            ->setPaper('a4')
+            ->setOption('isPhpEnabled', true);
     }
 
     private function storePdf(string $content, string $filename): string

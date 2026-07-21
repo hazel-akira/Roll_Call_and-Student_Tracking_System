@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Schools\Schemas;
 
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -29,6 +30,16 @@ class SchoolForm
                             ->label('Dynamics ID')
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
+                        FileUpload::make('logo_path')
+                            ->label('School logo')
+                            ->image()
+                            ->disk('public')
+                            ->directory('school-logos')
+                            ->visibility('public')
+                            ->imageEditor()
+                            ->maxSize(2048)
+                            ->helperText('Optional override for PDF reports. If empty, the default logo for this school code is used (PS, PGS, PJA, PGJA, SPTA). PNG/JPG/WebP, max 2MB.')
+                            ->columnSpanFull(),
                         Toggle::make('is_junior')
                             ->label('Junior school'),
                         Toggle::make('active')

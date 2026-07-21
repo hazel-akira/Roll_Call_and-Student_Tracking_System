@@ -28,18 +28,18 @@ class RollCallMemoBuilderTest extends TestCase
 
         $teacher = User::factory()->create();
         $school = School::query()->create([
-            'name' => 'Riara Springs Girls Secondary School',
-            'code' => 'RSGSS',
+            'name' => 'Pioneer School',
+            'code' => 'PS',
             'level' => 'senior',
             'active' => true,
         ]);
         $class = SchoolClass::query()->create([
             'school_id' => $school->id,
-            'name' => 'Grade Eleven South',
-            'code' => 'G11S',
+            'name' => 'Grade TEN',
+            'code' => 'G10',
             'academic_year' => '2026',
-            'grade_level' => 'Grade Eleven',
-            'section' => 'South',
+            'grade_level' => 'Grade Ten',
+            'section' => 'A',
             'homeroom_teacher_id' => $teacher->id,
         ]);
         $subject = Subject::query()->create([
@@ -76,17 +76,21 @@ class RollCallMemoBuilderTest extends TestCase
         $session->load(['classRoom.school', 'subject', 'records.student']);
         $memo = app(RollCallMemoBuilder::class)->buildMemoForSession($session);
 
-        $this->assertSame('RIARA SPRINGS GIRLS SECONDARY SCHOOL', $memo['school_name']);
+        $this->assertSame('PIONEER SCHOOL', $memo['school_name']);
         $this->assertSame('ROLL CALL MEMO', $memo['title']);
         $this->assertSame('TA1-2027 Term 1,Year 2026, Subject: CHEMISTRY', $memo['term_line']);
         $this->assertSame(1, $memo['student_count']);
         $this->assertSame('CHEMISTRY', $memo['department']);
-        $this->assertSame('GRADE ELEVEN SOUTH', $memo['stream_class']);
+        $this->assertSame('GRADE TEN A', $memo['stream_class']);
         $this->assertSame('Thursday, February 26, 2026', $memo['date_formatted']);
+        $this->assertNotEmpty($memo['school_logo']);
 
         $rows = $memo['pages'][0]['rows'];
         $this->assertCount(1, $rows);
         $this->assertSame('AMUGA MARION', $rows[0]['student_name']);
         $this->assertSame('PRESENT', $rows[0]['present']);
+        $this->assertSame(1, $memo['summary']['total_present']);
+        $this->assertSame(0, $memo['summary']['total_absent']);
+        $this->assertSame(0, $memo['summary']['total_excused']);
     }
 }

@@ -229,7 +229,7 @@ class StudentController extends Controller
                 echo Pdf::loadView('reports.student-attendance-report', [
                     'report' => $report,
                     'generated_at' => now()->format('Y-m-d H:i'),
-                ])->output();
+                ])->setPaper('a4')->setOption('isPhpEnabled', true)->output();
             }, $fileName, [
                 'Content-Type' => 'application/pdf',
             ]);

@@ -41,6 +41,10 @@ function getAuthErrorMessage(error: unknown): string {
   const rawMessage =
     error instanceof Error ? error.message : "Unable to initialize authentication.";
 
+  if (rawMessage.includes("post_request_failed")) {
+    return "Microsoft sign-in could not reach Entra ID. Confirm NEXT_PUBLIC_MICROSOFT_AUTHORITY and NEXT_PUBLIC_MICROSOFT_CLIENT_ID are valid, disable ad/tracker blocking for this site, and make sure your browser can open login.microsoftonline.com.";
+  }
+
   if (rawMessage.includes("AADSTS9002326")) {
     return "Microsoft sign-in is misconfigured in Entra or your browser has a stale login attempt. In Entra, keep http://localhost:3000/callback only under Single-page application (not Web), remove http://localhost/callback if unused, save, then clear site data for localhost:3000 and try again in a private window.";
   }

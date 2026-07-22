@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('school_duty_roster_template_entries')) {
+            return;
+        }
+
         Schema::create('school_duty_roster_template_entries', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('school_id')->constrained()->cascadeOnDelete();

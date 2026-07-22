@@ -5,8 +5,11 @@ namespace App\Services\DutyRoster;
 use App\Models\School;
 use App\Models\SchoolDutyRosterTemplateEntry;
 use App\Support\DutyRosterCategories;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SchoolDutyRosterTemplateService
 {
@@ -17,12 +20,25 @@ class SchoolDutyRosterTemplateService
      */
     public function ensureTemplate(School $school): Collection
     {
-        $existing = $school->dutyRosterTemplateEntries()->orderBy('sort_order')->get();
-        if ($existing->isNotEmpty()) {
-            return $existing;
+        if (! $this->templateTableReady()) {
+            return collect();
         }
 
-        return $this->resetToGlobalStandard($school);
+        try {
+            $existing = $school->dutyRosterTemplateEntries()->orderBy('sort_order')->get();
+            if ($existing->isNotEmpty()) {
+                return $existing;
+            }
+
+            return $this->resetToGlobalStandard($school);
+        } catch (QueryException $exception) {
+            Log::warning('Unable to load school duty roster template; using global standard.', [
+                'school_id' => $school->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return collect();
+        }
     }
 
     /**
@@ -32,6 +48,10 @@ class SchoolDutyRosterTemplateService
      */
     public function resetToGlobalStandard(School $school): Collection
     {
+        if (! $this->templateTableReady()) {
+            return collect();
+        }
+
         return DB::transaction(function () use ($school): Collection {
             $school->dutyRosterTemplateEntries()->delete();
 
@@ -54,13 +74,27 @@ class SchoolDutyRosterTemplateService
             ? $school
             : School::query()->find($school);
 
-        if ($schoolModel === null) {
+        if ($schoolModel === null || ! $this->templateTableReady()) {
             return DutyRosterCategories::standardTemplate();
         }
 
-        return $this->ensureTemplate($schoolModel)
+        $rows = $this->ensureTemplate($schoolModel);
+        if ($rows->isEmpty()) {
+            return DutyRosterCategories::standardTemplate();
+        }
+
+        return $rows
             ->map(fn (SchoolDutyRosterTemplateEntry $entry): array => $entry->toTemplateRow())
             ->values()
             ->all();
+    }
+
+    private function templateTableReady(): bool
+    {
+        try {
+            return Schema::hasTable('school_duty_roster_template_entries');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

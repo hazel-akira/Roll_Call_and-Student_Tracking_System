@@ -93,6 +93,17 @@ class RepairMigrationStateCommand extends Command
                 && Schema::hasColumn('classes', 'school_id')
                 && Schema::hasColumn('classes', 'grade_level'),
             '2026_05_28_100200_create_school_user_table' => fn (): bool => Schema::hasTable('school_user'),
+            '2026_07_10_100100_create_weekly_duty_rosters_table' => fn (): bool => Schema::hasTable('weekly_duty_rosters'),
+            '2026_07_10_100300_restructure_weekly_duty_rosters' => fn (): bool => Schema::hasTable('weekly_duty_roster_entries')
+                && Schema::hasTable('weekly_duty_roster_entry_user'),
+            '2026_07_14_160000_ensure_weekly_duty_roster_week_end' => fn (): bool => Schema::hasTable('weekly_duty_rosters')
+                && Schema::hasColumn('weekly_duty_rosters', 'week_end'),
+            '2026_07_22_120000_add_status_to_weekly_duty_rosters' => fn (): bool => Schema::hasTable('weekly_duty_rosters')
+                && Schema::hasColumn('weekly_duty_rosters', 'status')
+                && Schema::hasColumn('weekly_duty_rosters', 'published_at'),
+            '2026_07_22_130000_add_published_by_to_weekly_duty_rosters' => fn (): bool => Schema::hasTable('weekly_duty_rosters')
+                && Schema::hasColumn('weekly_duty_rosters', 'published_by'),
+            '2026_07_22_140000_create_school_duty_roster_template_entries_table' => fn (): bool => Schema::hasTable('school_duty_roster_template_entries'),
         ];
     }
 }

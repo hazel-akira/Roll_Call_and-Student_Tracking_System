@@ -321,8 +321,16 @@ export function DutyRosterEditor({
       setEntries(applyRoster(created));
       setRosters((current) => upsertRosterSummary(current, created));
       setMessage("Draft roster created. Assign staff, then preview and publish when ready.");
-    } catch {
-      setError("Unable to create a roster for this week.");
+    } catch (err) {
+      const apiMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message ===
+          "string"
+          ? (err as { response: { data: { message: string } } }).response.data.message
+          : null;
+      setError(apiMessage ?? "Unable to create a roster for this week.");
     } finally {
       setCreating(false);
     }

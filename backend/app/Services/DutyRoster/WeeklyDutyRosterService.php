@@ -61,18 +61,35 @@ class WeeklyDutyRosterService
             ? Carbon::parse($weekEnd)->startOfDay()
             : $start->copy()->addDays(6);
 
-        $roster = WeeklyDutyRoster::query()->create([
-            'school_id' => $schoolId,
-            'week_start' => $start,
-            'week_end' => $end,
-            'status' => WeeklyDutyRoster::STATUS_DRAFT,
-            'published_at' => null,
-        ]);
+        $existing = WeeklyDutyRoster::query()
+            ->where('school_id', $schoolId)
+            ->whereDate('week_start', $start->toDateString())
+            ->with(['entries.staff'])
+            ->first();
 
-        $roster->seedStandardTemplate();
-        $roster->load(['entries.staff']);
+        if ($existing !== null) {
+            if ($existing->entries()->doesntExist()) {
+                $existing->seedStandardTemplate();
+                $existing->load(['entries.staff']);
+            }
 
-        return $roster;
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($schoolId, $start, $end): WeeklyDutyRoster {
+            $roster = WeeklyDutyRoster::query()->create([
+                'school_id' => $schoolId,
+                'week_start' => $start,
+                'week_end' => $end,
+                'status' => WeeklyDutyRoster::STATUS_DRAFT,
+                'published_at' => null,
+            ]);
+
+            $roster->seedStandardTemplate();
+            $roster->load(['entries.staff']);
+
+            return $roster;
+        });
     }
 
     /**

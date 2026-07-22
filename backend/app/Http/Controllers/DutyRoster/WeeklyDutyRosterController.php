@@ -70,11 +70,25 @@ class WeeklyDutyRosterController extends Controller
         $schoolId = $this->requireSchoolId($request);
         $validated = $request->validated();
 
-        $roster = $this->rosterService->create(
-            $schoolId,
-            $validated['week_start'],
-            $validated['week_end'] ?? null,
-        );
+        try {
+            $roster = $this->rosterService->create(
+                $schoolId,
+                $validated['week_start'],
+                $validated['week_end'] ?? null,
+            );
+        } catch (\Illuminate\Database\QueryException $exception) {
+            report($exception);
+
+            $hint = str_contains($exception->getMessage(), 'school_duty_roster_template_entries')
+                || str_contains($exception->getMessage(), 'Unknown column')
+                || str_contains($exception->getMessage(), "doesn't exist")
+                ? ' Backend database may be missing recent migrations. Run: php artisan migrate --force'
+                : '';
+
+            return response()->json([
+                'message' => 'Unable to create the weekly duty roster.'.$hint,
+            ], 503);
+        }
 
         return response()->json([
             'message' => 'Weekly duty roster created.',

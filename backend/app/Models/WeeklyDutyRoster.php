@@ -11,10 +11,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WeeklyDutyRoster extends Model
 {
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_PUBLISHED = 'published';
+
     protected $fillable = [
         'school_id',
         'week_start',
         'week_end',
+        'status',
+        'published_at',
+        'published_by',
     ];
 
     protected function casts(): array
@@ -22,12 +29,23 @@ class WeeklyDutyRoster extends Model
         return [
             'week_start' => 'date',
             'week_end' => 'date',
+            'published_at' => 'datetime',
         ];
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->status === self::STATUS_PUBLISHED;
     }
 
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by');
     }
 
     public function entries(): HasMany
@@ -111,13 +129,21 @@ class WeeklyDutyRoster extends Model
             ->all();
     }
 
+    /**
+     * Seed duty rows from this school's default template (falls back to the global standard).
+     */
     public function seedStandardTemplate(): void
     {
         if ($this->entries()->exists()) {
             return;
         }
 
-        foreach (self::standardTemplateEntries() as $row) {
+        $this->loadMissing('school');
+
+        $rows = app(\App\Services\DutyRoster\SchoolDutyRosterTemplateService::class)
+            ->templateRowsForSchool($this->school ?? (int) $this->school_id);
+
+        foreach ($rows as $row) {
             $this->entries()->create($row);
         }
     }
@@ -126,6 +152,7 @@ class WeeklyDutyRoster extends Model
     {
         return static::query()
             ->forSchoolWeek($schoolId, $date)
+            ->where('status', self::STATUS_PUBLISHED)
             ->with(['entries.staff'])
             ->orderByDesc('week_start')
             ->first();

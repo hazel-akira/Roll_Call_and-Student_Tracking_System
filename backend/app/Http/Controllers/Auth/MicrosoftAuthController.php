@@ -6,6 +6,7 @@ use App\Actions\Auth\ResolveMicrosoftUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\MicrosoftExchangeRequest;
 use App\Http\Resources\UserResource;
+use App\Models\School;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\JwtIssuer;
 use App\Services\Auth\MicrosoftTokenValidator;
@@ -44,6 +45,23 @@ class MicrosoftAuthController extends Controller
         }
 
         if (! $this->userAccessService->hasSchoolAccess($user)) {
+            if ($this->userAccessService->requiresSchoolSelection($user)) {
+                $tokens = $this->jwtIssuer->createTokenPair($user, $request);
+
+                return response()->json([
+                    'message' => 'Select your school to finish setting up your account.',
+                    'code' => 'school_selection_required',
+                    'status' => $user->status,
+                    'user' => UserResource::make($user->loadMissing(['role', 'identities', 'schools'])),
+                    'schools' => School::query()
+                        ->where('active', true)
+                        ->orderBy('name')
+                        ->get(['id', 'name', 'code', 'level', 'active']),
+                    'current_school_id' => null,
+                    'tokens' => $tokens,
+                ]);
+            }
+
             return response()->json([
                 'message' => 'Your account is active but no school has been assigned yet. Ask an administrator to assign school access.',
                 'code' => 'school_access_required',

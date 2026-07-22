@@ -95,6 +95,12 @@ class WeeklyDutyRostersRelationManager extends RelationManager
                     ->label('Week')
                     ->formatStateUsing(fn (WeeklyDutyRoster $record): string => $record->weekLabel())
                     ->sortable(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->colors([
+                        'warning' => WeeklyDutyRoster::STATUS_DRAFT,
+                        'success' => WeeklyDutyRoster::STATUS_PUBLISHED,
+                    ]),
                 TextColumn::make('entries_count')
                     ->label('Duty rows')
                     ->counts('entries'),
@@ -108,22 +114,62 @@ class WeeklyDutyRostersRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('New weekly roster')
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['status'] = WeeklyDutyRoster::STATUS_DRAFT;
+                        $data['published_at'] = null;
+
+                        return $data;
+                    })
                     ->after(function (WeeklyDutyRoster $record): void {
                         $record->seedStandardTemplate();
                     }),
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('publish')
+                    ->label('Publish')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (WeeklyDutyRoster $record): bool => ! $record->isPublished())
+                    ->requiresConfirmation()
+                    ->action(function (WeeklyDutyRoster $record): void {
+                        $record->loadMissing('entries.staff');
+                        $unassigned = $record->entries->filter(fn ($entry) => $entry->staff->isEmpty())->count();
+                        if ($unassigned > 0) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot publish yet')
+                                ->body("{$unassigned} duty row(s) still need staff.")
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+                        $record->update([
+                            'status' => WeeklyDutyRoster::STATUS_PUBLISHED,
+                            'published_at' => now(),
+                        ]);
+                        \Filament\Notifications\Notification::make()
+                            ->title('Duty roster published')
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('loadTemplate')
-                    ->label('Reset to standard layout')
+                    ->label('Reset to school default')
                     ->icon('heroicon-o-document-duplicate')
                     ->requiresConfirmation()
+                    ->modalHeading('Reset this week to the school default layout?')
+                    ->modalDescription('Staff assignments on this week will be cleared. The school’s saved default locations will be restored.')
                     ->action(function (WeeklyDutyRoster $record): void {
                         $record->entries()->each(function ($entry): void {
                             $entry->staff()->detach();
                             $entry->delete();
                         });
                         $record->seedStandardTemplate();
+                        $record->update([
+                            'status' => WeeklyDutyRoster::STATUS_DRAFT,
+                            'published_at' => null,
+                            'published_by' => null,
+                        ]);
                     }),
                 DeleteAction::make(),
             ])

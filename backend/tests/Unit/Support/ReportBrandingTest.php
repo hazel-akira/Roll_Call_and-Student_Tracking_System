@@ -78,4 +78,32 @@ class ReportBrandingTest extends TestCase
         $this->assertNotFalse($fallback);
         $this->assertStringContainsString(base64_encode($fallback), $uri);
     }
+
+    public function test_logo_absolute_path_resolves_for_mapped_school(): void
+    {
+        $school = School::query()->create([
+            'name' => 'Pioneer School',
+            'code' => 'PS',
+            'level' => 'senior',
+            'active' => true,
+        ]);
+
+        $path = ReportBranding::logoAbsolutePath($school);
+
+        $this->assertNotNull($path);
+        $this->assertFileExists($path);
+    }
+
+    public function test_school_model_exposes_logo_url_for_mapped_code(): void
+    {
+        $school = School::query()->create([
+            'name' => 'Pioneer School',
+            'code' => 'PS',
+            'level' => 'senior',
+            'active' => true,
+        ]);
+
+        $this->assertNotNull($school->logo_url);
+        $this->assertStringContainsString('ps.png', $school->logo_url);
+    }
 }

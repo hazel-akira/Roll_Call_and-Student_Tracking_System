@@ -21,6 +21,9 @@ class AttendanceReportRequest extends FormRequest
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
             'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
+            'academic_year' => ['nullable', 'string', 'max:20'],
+            'term' => ['nullable', 'integer', 'in:1,2,3'],
+            'week_start' => ['nullable', 'date'],
             'format' => ['nullable', 'in:json,pdf,xlsx'],
         ];
     }

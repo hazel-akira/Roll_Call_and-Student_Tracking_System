@@ -114,4 +114,9 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'sso' => [
+        'default_role_slug' => env('AUTH_DEFAULT_ROLE_SLUG', 'teacher'),
+        'auto_activate' => filter_var(env('AUTH_AUTO_ACTIVATE_SSO_USERS', false), FILTER_VALIDATE_BOOL),
+    ],
+
 ];

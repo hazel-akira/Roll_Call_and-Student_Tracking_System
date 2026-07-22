@@ -5,6 +5,7 @@ namespace App\Actions\Auth;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserIdentity;
+use App\Support\RoleSlugs;
 use Illuminate\Support\Arr;
 
 class ResolveMicrosoftUser
@@ -27,10 +28,10 @@ class ResolveMicrosoftUser
             $user = User::query()->whereRaw('lower(email) = ?', [$email])->first();
         }
 
-        if (! $user) {
-            $defaultRole = Role::query()->where('slug', env('AUTH_DEFAULT_ROLE_SLUG', 'teacher'))->first();
+        $autoActivate = (bool) config('auth.sso.auto_activate', false);
 
-            $autoActivate = filter_var(env('AUTH_AUTO_ACTIVATE_SSO_USERS', false), FILTER_VALIDATE_BOOL);
+        if (! $user) {
+            $defaultRole = Role::query()->where('slug', config('auth.sso.default_role_slug', RoleSlugs::TEACHER))->first();
 
             $user = User::query()->create([
                 'role_id' => $defaultRole?->id,
@@ -42,12 +43,22 @@ class ResolveMicrosoftUser
                 'last_login_at' => now(),
             ]);
         } else {
-            $user->forceFill([
+            $updates = [
                 'name' => (string) Arr::get($claims, 'name', $user->name),
                 'job_title' => Arr::get($claims, 'job_title', $user->job_title),
                 'department' => Arr::get($claims, 'department', $user->department),
                 'last_login_at' => now(),
-            ])->save();
+            ];
+
+            if (
+                $autoActivate
+                && $user->status === 'pending'
+                && $user->role?->slug === RoleSlugs::TEACHER
+            ) {
+                $updates['status'] = 'active';
+            }
+
+            $user->forceFill($updates)->save();
         }
 
         UserIdentity::query()->updateOrCreate(

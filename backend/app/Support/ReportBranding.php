@@ -14,22 +14,76 @@ class ReportBranding
      */
     public static function logoDataUri(?School $school = null): ?string
     {
+        $path = self::resolvedLogoAbsolutePath($school);
+
+        return $path === null ? null : self::dataUriFromPath($path);
+    }
+
+    /**
+     * Absolute filesystem path for Excel drawings / offline tooling.
+     * WebP sources are converted to a temporary PNG when GD is available.
+     */
+    public static function logoAbsolutePath(?School $school = null): ?string
+    {
+        $path = self::resolvedLogoAbsolutePath($school);
+
+        if ($path === null) {
+            return null;
+        }
+
+        $mime = mime_content_type($path) ?: 'image/png';
+
+        if ($mime !== 'image/webp') {
+            return $path;
+        }
+
+        if (! function_exists('imagecreatefromwebp')) {
+            return null;
+        }
+
+        $image = @imagecreatefromwebp($path);
+        if ($image === false) {
+            return null;
+        }
+
+        $temp = tempnam(sys_get_temp_dir(), 'school-logo-');
+        if ($temp === false) {
+            imagedestroy($image);
+
+            return null;
+        }
+
+        $pngPath = $temp.'.png';
+        @unlink($temp);
+
+        $ok = imagepng($image, $pngPath);
+        imagedestroy($image);
+
+        return $ok ? $pngPath : null;
+    }
+
+    /**
+     * Public URL for UI report headers (upload → default by school code → PGOS).
+     */
+    public static function logoPublicUrl(?School $school = null): ?string
+    {
         if ($school?->logo_path) {
-            $uri = self::dataUriFromDisk('public', $school->logo_path);
-            if ($uri !== null) {
-                return $uri;
+            $storage = Storage::disk('public');
+            if ($storage->exists($school->logo_path)) {
+                return url($storage->url($school->logo_path));
             }
         }
 
         $defaultRelative = self::defaultLogoRelativePath($school);
-        if ($defaultRelative !== null) {
-            $uri = self::dataUriFromPath(public_path($defaultRelative));
-            if ($uri !== null) {
-                return $uri;
-            }
+        if ($defaultRelative !== null && is_file(public_path($defaultRelative))) {
+            return asset($defaultRelative);
         }
 
-        return self::dataUriFromPath(public_path('images/pgos_logo.png'));
+        if (is_file(public_path('images/pgos_logo.png'))) {
+            return asset('images/pgos_logo.png');
+        }
+
+        return null;
     }
 
     /**
@@ -48,15 +102,26 @@ class ReportBranding
         return is_string($path) && $path !== '' ? $path : null;
     }
 
-    private static function dataUriFromDisk(string $disk, string $path): ?string
+    private static function resolvedLogoAbsolutePath(?School $school = null): ?string
     {
-        $storage = Storage::disk($disk);
-
-        if (! $storage->exists($path)) {
-            return null;
+        if ($school?->logo_path) {
+            $storage = Storage::disk('public');
+            if ($storage->exists($school->logo_path)) {
+                return $storage->path($school->logo_path);
+            }
         }
 
-        return self::dataUriFromPath($storage->path($path));
+        $defaultRelative = self::defaultLogoRelativePath($school);
+        if ($defaultRelative !== null) {
+            $absolute = public_path($defaultRelative);
+            if (is_file($absolute) && is_readable($absolute)) {
+                return $absolute;
+            }
+        }
+
+        $fallback = public_path('images/pgos_logo.png');
+
+        return is_file($fallback) && is_readable($fallback) ? $fallback : null;
     }
 
     private static function dataUriFromPath(string $absolutePath): ?string

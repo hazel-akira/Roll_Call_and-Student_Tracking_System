@@ -100,6 +100,115 @@ class AttendanceReportService
             });
     }
 
+    /**
+     * Week-by-week attendance overview for the Reports table.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function weeklyOverview(array $filters): array
+    {
+        $sessions = AttendanceSession::query()
+            ->with(['classRoom.school', 'records'])
+            ->when($filters['from'] ?? null, fn (Builder $query, string $from) => $query->whereDate('session_date', '>=', $from))
+            ->when($filters['to'] ?? null, fn (Builder $query, string $to) => $query->whereDate('session_date', '<=', $to))
+            ->when($filters['school_id'] ?? null, fn (Builder $query, int $schoolId) => $query->whereHas('classRoom', fn (Builder $classQuery) => $classQuery->where('school_id', $schoolId)))
+            ->when($filters['class_id'] ?? null, fn (Builder $query, int $classId) => $query->where('class_id', $classId))
+            ->when($filters['academic_year'] ?? null, function (Builder $query, string $year): void {
+                $query->whereHas('classRoom', fn (Builder $classQuery) => $classQuery->where('academic_year', $year));
+            })
+            ->when($filters['term'] ?? null, function (Builder $query, int $term): void {
+                $months = match ($term) {
+                    1 => [1, 2, 3, 4],
+                    2 => [5, 6, 7, 8],
+                    default => [9, 10, 11, 12],
+                };
+                $query->where(function (Builder $monthQuery) use ($months): void {
+                    foreach ($months as $month) {
+                        $monthQuery->orWhereMonth('session_date', $month);
+                    }
+                });
+            })
+            ->when($filters['week_start'] ?? null, function (Builder $query, string $weekStart): void {
+                $start = \Illuminate\Support\Carbon::parse($weekStart)->startOfWeek();
+                $end = $start->copy()->endOfWeek();
+                $query->whereDate('session_date', '>=', $start->toDateString())
+                    ->whereDate('session_date', '<=', $end->toDateString());
+            })
+            ->orderByDesc('session_date')
+            ->limit(400)
+            ->get();
+
+        $weeks = [];
+
+        foreach ($sessions as $session) {
+            $sessionDate = $session->session_date?->copy() ?? now();
+            $weekStart = $sessionDate->copy()->startOfWeek();
+            $weekEnd = $weekStart->copy()->addDays(6);
+            $schoolId = (int) ($session->classRoom?->school_id ?? 0);
+            $key = $weekStart->toDateString().'|'.$schoolId;
+
+            if (! isset($weeks[$key])) {
+                $roster = $schoolId > 0
+                    ? \App\Models\WeeklyDutyRoster::resolveForSchoolDate($schoolId, $weekStart)
+                    : null;
+
+                $dutyNames = $roster
+                    ? $roster->entries->flatMap(fn ($entry) => $entry->staff->pluck('name'))->unique()->filter()->values()->take(3)->implode(', ')
+                    : '';
+
+                $weeks[$key] = [
+                    'week_start' => $weekStart->toDateString(),
+                    'week_end' => $weekEnd->toDateString(),
+                    'week_label' => strtoupper($weekStart->format('jS M').' - '.$weekEnd->format('jS M')),
+                    'school_id' => $schoolId ?: null,
+                    'school_name' => $session->classRoom?->school?->name,
+                    'academic_year' => $session->classRoom?->academic_year,
+                    'term' => $this->schoolTerm($weekStart),
+                    'teacher_on_duty' => $dutyNames !== '' ? $dutyNames : '—',
+                    'present' => 0,
+                    'absent' => 0,
+                    'excused' => 0,
+                    'late' => 0,
+                    'records' => 0,
+                    'generated_on' => null,
+                ];
+            }
+
+            foreach ($session->records as $record) {
+                $status = (string) $record->status;
+                if (isset($weeks[$key][$status])) {
+                    $weeks[$key][$status]++;
+                }
+                $weeks[$key]['records']++;
+            }
+
+            $generatedCandidate = optional($session->closed_at ?? $session->updated_at)->toDateString();
+            if ($generatedCandidate && (
+                $weeks[$key]['generated_on'] === null
+                || $generatedCandidate > $weeks[$key]['generated_on']
+            )) {
+                $weeks[$key]['generated_on'] = $generatedCandidate;
+            }
+        }
+
+        return array_values($weeks);
+    }
+
+    private function schoolTerm(\Illuminate\Support\Carbon $date): int
+    {
+        $month = (int) $date->format('n');
+
+        if ($month >= 1 && $month <= 4) {
+            return 1;
+        }
+
+        if ($month >= 5 && $month <= 8) {
+            return 2;
+        }
+
+        return 3;
+    }
+
     private function recordsQuery(array $filters): Builder
     {
         return AttendanceRecord::query()

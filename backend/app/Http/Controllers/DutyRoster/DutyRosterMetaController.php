@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\DutyRoster;
 
 use App\Http\Controllers\Controller;
+use App\Services\DutyRoster\SchoolDutyRosterTemplateService;
 use App\Services\DutyRoster\WeeklyDutyRosterService;
 use App\Services\TenantService;
 use App\Support\DutyRosterCategories;
@@ -14,15 +15,22 @@ class DutyRosterMetaController extends Controller
 {
     public function __construct(
         private readonly WeeklyDutyRosterService $rosterService,
+        private readonly SchoolDutyRosterTemplateService $templateService,
         private readonly TenantService $tenantService,
     ) {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $schoolId = $this->tenantService->effectiveSchoolId($request);
+        $schoolTemplate = $schoolId !== null
+            ? $this->templateService->templateRowsForSchool((int) $schoolId)
+            : DutyRosterCategories::standardTemplate();
+
         return response()->json([
             'categories' => DutyRosterCategories::labels(),
             'standard_template' => DutyRosterCategories::standardTemplate(),
+            'school_template' => $schoolTemplate,
         ]);
     }
 

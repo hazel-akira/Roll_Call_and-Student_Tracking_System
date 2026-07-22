@@ -21,7 +21,16 @@ import {
   logoutFromMicrosoft,
 } from "@/lib/auth/msal";
 import { roleHomePath } from "@/lib/utils";
+import { needsSchoolOnboarding } from "@/lib/auth/onboarding";
 import type { AppUser, AuthSession, TokenSet } from "@/types";
+
+type MicrosoftExchangeResponse = {
+  user: AppUser;
+  tokens: TokenSet;
+  current_school_id?: string | number | null;
+  code?: string;
+  schools?: AppUser["schools"];
+};
 
 type AuthContextValue = {
   user: AppUser | null;
@@ -33,6 +42,7 @@ type AuthContextValue = {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  completeSchoolOnboarding: (payload: { user: AppUser; tokens: TokenSet }) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -136,14 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeMicrosoftExchange = useCallback(
     async (idToken: string) => {
-      const exchangeResponse = await apiClient.post<{
-        user: AppUser;
-        tokens: TokenSet;
-        current_school_id?: string | number | null;
-      }>("/auth/microsoft/exchange", {
-        id_token: idToken,
-        nonce: consumeStoredNonce(),
-      });
+      const exchangeResponse = await apiClient.post<MicrosoftExchangeResponse>(
+        "/auth/microsoft/exchange",
+        {
+          id_token: idToken,
+          nonce: consumeStoredNonce(),
+        },
+      );
 
       const nextSession = {
         user: exchangeResponse.data.user,
@@ -152,9 +161,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       applySession(nextSession);
       setError(null);
+
+      if (
+        exchangeResponse.data.code === "school_selection_required" ||
+        needsSchoolOnboarding(nextSession.user)
+      ) {
+        router.replace("/onboarding/schools");
+        return;
+      }
+
       router.replace(roleHomePath(nextSession.user.role?.slug));
     },
     [applySession, router],
+  );
+
+  const completeSchoolOnboarding = useCallback(
+    (payload: { user: AppUser; tokens: TokenSet }) => {
+      applySession({
+        user: payload.user,
+        tokens: payload.tokens,
+      });
+      setError(null);
+    },
+    [applySession],
   );
 
   useEffect(() => {
@@ -256,7 +285,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (pathname === "/callback") {
       if (user) {
-        router.replace(roleHomePath(user.role?.slug));
+        router.replace(
+          needsSchoolOnboarding(user) ? "/onboarding/schools" : roleHomePath(user.role?.slug),
+        );
       } else {
         router.replace("/login");
       }
@@ -267,8 +298,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (pathname === "/onboarding/schools") {
+      if (user && !needsSchoolOnboarding(user)) {
+        router.replace(roleHomePath(user.role?.slug));
+      }
+      return;
+    }
+
     if (!user) {
       router.replace("/login");
+      return;
+    }
+
+    if (needsSchoolOnboarding(user)) {
+      router.replace("/onboarding/schools");
     }
   }, [loading, pathname, router, user]);
 
@@ -283,8 +326,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithGoogle,
       logout,
       refreshProfile,
+      completeSchoolOnboarding,
     }),
-    [error, googleSignInEnabled, loading, login, loginWithGoogle, logout, refreshProfile, tokens, user],
+    [completeSchoolOnboarding, error, googleSignInEnabled, loading, login, loginWithGoogle, logout, refreshProfile, tokens, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

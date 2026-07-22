@@ -315,4 +315,99 @@ class ReportsApiTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_dean_can_fetch_attendance_weeks_overview(): void
+    {
+        [$dean, $school] = $this->createDeanWithSchool();
+        $teacher = $this->createUserWithRole('teacher');
+        $class = SchoolClass::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Form 3',
+            'code' => 'F3A-WEEKS',
+            'academic_year' => '2026',
+            'grade_level' => 'Form 3',
+            'section' => 'A',
+            'homeroom_teacher_id' => $teacher->id,
+        ]);
+        $subject = Subject::query()->create([
+            'name' => 'Roll Call',
+            'code' => 'ROLL-CALL-WEEKS',
+        ]);
+        $student = Student::query()->create([
+            'class_id' => $class->id,
+            'admission_number' => 'ADM-WEEKS-1',
+            'first_name' => 'Mercy',
+            'last_name' => 'Wanjiru',
+            'status' => 'active',
+        ]);
+        $session = AttendanceSession::query()->create([
+            'class_id' => $class->id,
+            'subject_id' => $subject->id,
+            'teacher_id' => $teacher->id,
+            'title' => 'Morning Roll Call',
+            'session_date' => now()->toDateString(),
+            'started_at' => now(),
+            'closed_at' => now(),
+            'status' => 'closed',
+            'source' => 'web',
+            'dynamics_sync_status' => 'pending',
+        ]);
+        AttendanceRecord::query()->create([
+            'attendance_session_id' => $session->id,
+            'student_id' => $student->id,
+            'marked_by' => $teacher->id,
+            'status' => 'present',
+            'marked_at' => now(),
+        ]);
+
+        $response = $this->getJson(
+            '/api/v1/reports/attendance-weeks',
+            array_merge($this->authHeaders($dean), ['X-School-Id' => (string) $school->id]),
+        );
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.school_name', $school->name)
+            ->assertJsonPath('data.0.present', 1);
+    }
+
+    public function test_dean_can_list_and_export_duty_roster_report(): void
+    {
+        [$dean, $school] = $this->createDeanWithSchool();
+        $teacher = $this->createUserWithRole('teacher');
+        $teacher->schools()->attach($school->id);
+
+        $roster = \App\Models\WeeklyDutyRoster::query()->create([
+            'school_id' => $school->id,
+            'week_start' => now()->startOfWeek(),
+            'week_end' => now()->startOfWeek()->addDays(6),
+            'status' => \App\Models\WeeklyDutyRoster::STATUS_PUBLISHED,
+            'published_at' => now(),
+            'published_by' => $dean->id,
+        ]);
+        $roster->seedStandardTemplate();
+        $roster->entries()->each(function ($entry) use ($teacher): void {
+            $entry->staff()->sync([$teacher->id]);
+        });
+
+        $headers = array_merge($this->authHeaders($dean), ['X-School-Id' => (string) $school->id]);
+
+        $list = $this->getJson('/api/v1/reports/duty-rosters', $headers);
+        $list
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $roster->id)
+            ->assertJsonPath('data.0.published_by_name', $dean->name);
+
+        $show = $this->getJson("/api/v1/reports/duty-rosters/{$roster->id}", $headers);
+        $show
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonStructure(['data' => ['sections']]);
+
+        $pdf = $this->get("/api/v1/reports/duty-rosters/{$roster->id}/export?format=pdf", $headers);
+        $pdf->assertOk();
+
+        $xlsx = $this->get("/api/v1/reports/duty-rosters/{$roster->id}/export?format=xlsx", $headers);
+        $xlsx->assertOk();
+    }
 }

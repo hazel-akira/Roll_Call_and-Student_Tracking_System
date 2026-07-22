@@ -25,9 +25,10 @@ class WeeklyDutyRosterController extends Controller
 
         $rosters = WeeklyDutyRoster::query()
             ->where('school_id', $schoolId)
+            ->with('publisher:id,name')
             ->withCount('entries')
             ->orderByDesc('week_start')
-            ->limit(20)
+            ->limit(40)
             ->get()
             ->map(fn (WeeklyDutyRoster $roster): array => [
                 'id' => $roster->id,
@@ -35,6 +36,10 @@ class WeeklyDutyRosterController extends Controller
                 'week_start' => $roster->week_start?->toDateString(),
                 'week_end' => $roster->week_end?->toDateString(),
                 'week_label' => $roster->weekLabel(),
+                'status' => $roster->status ?? WeeklyDutyRoster::STATUS_DRAFT,
+                'published_at' => $roster->published_at?->toIso8601String(),
+                'published_by' => $roster->published_by,
+                'published_by_name' => $roster->publisher?->name,
                 'entries_count' => $roster->entries_count,
             ]);
 
@@ -44,7 +49,7 @@ class WeeklyDutyRosterController extends Controller
     public function current(Request $request): JsonResponse
     {
         $schoolId = $this->requireSchoolId($request);
-        $roster = $this->rosterService->resolveCurrent($schoolId);
+        $roster = $this->rosterService->resolveCurrentForEditing($schoolId);
 
         return response()->json([
             'data' => $roster ? $this->rosterService->serialize($roster) : null,
@@ -107,6 +112,42 @@ class WeeklyDutyRosterController extends Controller
 
         return response()->json([
             'message' => 'Duty roster reset to the standard layout.',
+            'data' => $this->rosterService->serialize($roster),
+        ]);
+    }
+
+    public function copyFromPrevious(Request $request, WeeklyDutyRoster $dutyRoster): JsonResponse
+    {
+        $this->ensureRosterAccessible($request, $dutyRoster);
+
+        $roster = $this->rosterService->copyFromPrevious($dutyRoster);
+
+        return response()->json([
+            'message' => 'Staff assignments copied from the previous week.',
+            'data' => $this->rosterService->serialize($roster),
+        ]);
+    }
+
+    public function publish(Request $request, WeeklyDutyRoster $dutyRoster): JsonResponse
+    {
+        $this->ensureRosterAccessible($request, $dutyRoster);
+
+        $roster = $this->rosterService->publish($dutyRoster, $request->user()?->id);
+
+        return response()->json([
+            'message' => 'Duty roster published. It will appear on roll call reports and notifications.',
+            'data' => $this->rosterService->serialize($roster),
+        ]);
+    }
+
+    public function unpublish(Request $request, WeeklyDutyRoster $dutyRoster): JsonResponse
+    {
+        $this->ensureRosterAccessible($request, $dutyRoster);
+
+        $roster = $this->rosterService->unpublish($dutyRoster);
+
+        return response()->json([
+            'message' => 'Duty roster moved back to draft.',
             'data' => $this->rosterService->serialize($roster),
         ]);
     }

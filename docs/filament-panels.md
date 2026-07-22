@@ -46,7 +46,9 @@ Use the **same app registration**, but register redirect URIs on the **correct p
 
 For production, use your HTTPS domains on the same platform types.
 
-New Microsoft users are created as **pending** when `AUTH_AUTO_ACTIVATE_SSO_USERS=false`. They cannot get a JWT or use Filament until an admin grants access and (for teachers) assigns at least one school.
+New Microsoft users are created as **active teachers** when `AUTH_AUTO_ACTIVATE_SSO_USERS=true` (default). Teachers without a school assignment complete setup in the Next.js app at `/onboarding/schools` after their first sign-in.
+
+When `AUTH_AUTO_ACTIVATE_SSO_USERS=false`, new users remain **pending** until an admin grants access and (for teachers) assigns at least one school.
 
 ## Admin panel
 
@@ -58,9 +60,9 @@ New Microsoft users are created as **pending** when `AUTH_AUTO_ACTIVATE_SSO_USER
   - **School access** — multi-select on the form or the School access relation tab.
   - **Microsoft sign-in** tab — see when they last attempted SSO.
 
-New Microsoft users are created as **pending** by default (`AUTH_AUTO_ACTIVATE_SSO_USERS=false`). They cannot get a JWT until an admin grants access and (for teachers) assigns at least one school.
+When auto-activation is disabled (`AUTH_AUTO_ACTIVATE_SSO_USERS=false`), new users remain pending until an admin grants access and assigns schools.
 
-Administrators and ICT staff can access all schools in the API without explicit assignments. Teachers must be linked to at least one school before they can sign in.
+Administrators and ICT staff can access all schools in the API without explicit assignments. Teachers must be linked to at least one school before they can use tenant-scoped features; they can self-select schools on first login when auto-activation is enabled.
 
 ## Teacher panel
 

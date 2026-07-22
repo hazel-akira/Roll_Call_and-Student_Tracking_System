@@ -65,12 +65,87 @@ class WeeklyDutyRosterService
             'school_id' => $schoolId,
             'week_start' => $start,
             'week_end' => $end,
+            'status' => WeeklyDutyRoster::STATUS_DRAFT,
+            'published_at' => null,
         ]);
 
         $roster->seedStandardTemplate();
         $roster->load(['entries.staff']);
 
         return $roster;
+    }
+
+    /**
+     * Copy staff assignments from the most recent earlier week onto this roster.
+     */
+    public function copyFromPrevious(WeeklyDutyRoster $roster): WeeklyDutyRoster
+    {
+        $previous = WeeklyDutyRoster::query()
+            ->where('school_id', $roster->school_id)
+            ->where('id', '!=', $roster->id)
+            ->whereDate('week_start', '<', $roster->week_start?->toDateString())
+            ->orderByDesc('week_start')
+            ->with(['entries.staff'])
+            ->first();
+
+        if ($previous === null) {
+            throw ValidationException::withMessages([
+                'roster' => 'No previous week roster was found to copy from.',
+            ]);
+        }
+
+        $roster->loadMissing('entries.staff');
+
+        $sourceByKey = [];
+        foreach ($previous->entries as $entry) {
+            $sourceByKey[$this->entryMatchKey($entry)] = $entry->staff->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        DB::transaction(function () use ($roster, $sourceByKey): void {
+            foreach ($roster->entries as $entry) {
+                $staffIds = $sourceByKey[$this->entryMatchKey($entry)] ?? [];
+                $staffIds = $this->validateStaffIds((int) $roster->school_id, $staffIds);
+                $entry->staff()->sync($staffIds);
+            }
+        });
+
+        if ($roster->isPublished()) {
+            $roster->status = WeeklyDutyRoster::STATUS_DRAFT;
+            $roster->published_at = null;
+            $roster->published_by = null;
+            $roster->save();
+        }
+
+        return $roster->fresh(['entries.staff', 'publisher']);
+    }
+
+    public function publish(WeeklyDutyRoster $roster, ?int $publisherId = null): WeeklyDutyRoster
+    {
+        $roster->loadMissing('entries.staff');
+
+        $unassigned = $roster->entries->filter(fn (WeeklyDutyRosterEntry $entry) => $entry->staff->isEmpty())->count();
+        if ($unassigned > 0) {
+            throw ValidationException::withMessages([
+                'roster' => "{$unassigned} duty row(s) still need staff before publishing.",
+            ]);
+        }
+
+        $roster->status = WeeklyDutyRoster::STATUS_PUBLISHED;
+        $roster->published_at = now();
+        $roster->published_by = $publisherId;
+        $roster->save();
+
+        return $roster->fresh(['entries.staff', 'publisher']);
+    }
+
+    public function unpublish(WeeklyDutyRoster $roster): WeeklyDutyRoster
+    {
+        $roster->status = WeeklyDutyRoster::STATUS_DRAFT;
+        $roster->published_at = null;
+        $roster->published_by = null;
+        $roster->save();
+
+        return $roster->fresh(['entries.staff', 'publisher']);
     }
 
     /**
@@ -92,6 +167,14 @@ class WeeklyDutyRosterService
 
         if (isset($data['entries']) && is_array($data['entries'])) {
             $this->syncEntries($roster, $data['entries']);
+
+            // Saving edits on a published roster returns it to draft until re-published.
+            if ($roster->isPublished()) {
+                $roster->status = WeeklyDutyRoster::STATUS_DRAFT;
+                $roster->published_at = null;
+                $roster->published_by = null;
+                $roster->save();
+            }
         }
 
         return $roster->fresh(['entries.staff']);
@@ -164,7 +247,12 @@ class WeeklyDutyRosterService
 
         $roster->seedStandardTemplate();
 
-        return $roster->fresh(['entries.staff']);
+        $roster->status = WeeklyDutyRoster::STATUS_DRAFT;
+        $roster->published_at = null;
+        $roster->published_by = null;
+        $roster->save();
+
+        return $roster->fresh(['entries.staff', 'publisher']);
     }
 
     public function resolveCurrent(int $schoolId, ?CarbonInterface $date = null): ?WeeklyDutyRoster
@@ -173,11 +261,23 @@ class WeeklyDutyRosterService
     }
 
     /**
+     * Current week for the editor — includes drafts that are not yet published.
+     */
+    public function resolveCurrentForEditing(int $schoolId, ?CarbonInterface $date = null): ?WeeklyDutyRoster
+    {
+        return WeeklyDutyRoster::query()
+            ->forSchoolWeek($schoolId, $date ?? now())
+            ->with(['entries.staff'])
+            ->orderByDesc('week_start')
+            ->first();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function serialize(WeeklyDutyRoster $roster): array
     {
-        $roster->loadMissing('entries.staff');
+        $roster->loadMissing(['entries.staff', 'publisher']);
 
         return [
             'id' => $roster->id,
@@ -185,6 +285,10 @@ class WeeklyDutyRosterService
             'week_start' => $roster->week_start?->toDateString(),
             'week_end' => $roster->week_end?->toDateString(),
             'week_label' => $roster->weekLabel(),
+            'status' => $roster->status ?? WeeklyDutyRoster::STATUS_DRAFT,
+            'published_at' => $roster->published_at?->toIso8601String(),
+            'published_by' => $roster->published_by,
+            'published_by_name' => $roster->publisher?->name,
             'entries' => $roster->entries->map(fn (WeeklyDutyRosterEntry $entry): array => [
                 'id' => $entry->id,
                 'category' => $entry->category,
@@ -199,6 +303,16 @@ class WeeklyDutyRosterService
                     'email' => $user->email,
                 ])->values()->all(),
             ])->values()->all(),
+            'sections' => $roster->sectionsForDisplay(),
         ];
+    }
+
+    private function entryMatchKey(WeeklyDutyRosterEntry $entry): string
+    {
+        return implode('|', [
+            $entry->category,
+            (string) ($entry->location ?? ''),
+            (string) ($entry->time_slot ?? ''),
+        ]);
     }
 }

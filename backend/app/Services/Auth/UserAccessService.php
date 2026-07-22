@@ -28,6 +28,19 @@ class UserAccessService
         return $user->schools()->exists();
     }
 
+    public function canSelfAssignSchools(User $user): bool
+    {
+        return $user->role?->slug === RoleSlugs::TEACHER;
+    }
+
+    public function requiresSchoolSelection(User $user): bool
+    {
+        return $this->canSignIn($user)
+            && $this->userRequiresSchools($user)
+            && ! $this->hasSchoolAccess($user)
+            && $this->canSelfAssignSchools($user);
+    }
+
     public function validateCanActivate(User $user): void
     {
         if ($user->status !== 'active') {

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Services\DutyRoster\SchoolDutyRosterTemplateService;
 use Illuminate\Database\Seeder;
 
 class SchoolAndClassSeeder extends Seeder
@@ -39,6 +40,8 @@ class SchoolAndClassSeeder extends Seeder
                     'active' => true,
                 ],
             );
+
+            app(SchoolDutyRosterTemplateService::class)->ensureTemplate($school);
 
             $streams = $definition['streams'] !== [] ? $definition['streams'] : [''];
 

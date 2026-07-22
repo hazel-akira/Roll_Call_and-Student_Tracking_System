@@ -16,6 +16,8 @@ class PendingUserExchangeTest extends TestCase
     {
         $this->seed(\Database\Seeders\RoleSeeder::class);
 
+        config()->set('auth.sso.auto_activate', false);
+
         $user = app(ResolveMicrosoftUser::class)->execute([
             'sub' => 'ms-subject-123',
             'email' => 'new.teacher@school.test',

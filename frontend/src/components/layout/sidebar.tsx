@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookOpen,
+  ChevronDown,
   ClipboardCheck,
   ClipboardList,
   LayoutDashboard,
@@ -18,15 +19,58 @@ import { cn } from "@/lib/utils";
 import { useSchool } from "@/lib/tenant/school-context";
 import type { AppUser } from "@/types";
 
-const navItems = [
+type NavLeaf = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: readonly string[];
+};
+
+type NavGroup = {
+  label: string;
+  icon: typeof BookOpen;
+  roles: readonly string[];
+  children: readonly NavLeaf[];
+};
+
+type NavItem = NavLeaf | NavGroup;
+
+function isNavGroup(item: NavItem): item is NavGroup {
+  return "children" in item;
+}
+
+const navItems: readonly NavItem[] = [
   { href: "/teacher", label: "Teacher Dashboard", icon: LayoutDashboard, roles: ["teacher", "admin", "ict_staff"] },
   { href: "/admin", label: "Admin Dashboard", icon: BarChart3, roles: ["admin", "ict_staff"] },
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["teacher", "admin", "ict_staff"] },
   { href: "/class-streams", label: "Class streams", icon: Layers, roles: ["teacher", "admin", "ict_staff"] },
   { href: "/students", label: "Students", icon: Users, roles: ["teacher", "admin", "ict_staff"] },
-  { href: "/duty-roster", label: "Duty roster", icon: ClipboardList, roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"] },
-  { href: "/reports", label: "Reports", icon: BookOpen, roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"] },
-] as const;
+  {
+    href: "/duty-roster",
+    label: "Duty roster",
+    icon: ClipboardList,
+    roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"],
+  },
+  {
+    label: "Reports",
+    icon: BookOpen,
+    roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"],
+    children: [
+      {
+        href: "/reports/attendance",
+        label: "Attendance Reports",
+        icon: ClipboardCheck,
+        roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"],
+      },
+      {
+        href: "/reports/duty-roster",
+        label: "Duty Roster Reports",
+        icon: ClipboardList,
+        roles: ["admin", "ict_staff", "dean_of_students", "deputy_dean"],
+      },
+    ],
+  },
+];
 
 export function Sidebar({
   user,
@@ -42,6 +86,14 @@ export function Sidebar({
   const [logoMissing, setLogoMissing] = useState(false);
   const role = user.role?.slug ?? "teacher";
   const items = navItems.filter((item) => item.roles.some((itemRole) => itemRole === role));
+  const reportsOpenByDefault = pathname.startsWith("/reports");
+  const [reportsOpen, setReportsOpen] = useState(reportsOpenByDefault);
+
+  useEffect(() => {
+    if (pathname.startsWith("/reports")) {
+      setReportsOpen(true);
+    }
+  }, [pathname]);
 
   return (
     <>
@@ -92,9 +144,63 @@ export function Sidebar({
         </div>
         <nav className="space-y-1">
           {items.map((item) => {
+            if (isNavGroup(item)) {
+              const Icon = item.icon;
+              const childActive = item.children.some(
+                (child) => pathname === child.href || pathname.startsWith(`${child.href}/`),
+              );
+
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setReportsOpen((open) => !open)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                      childActive
+                        ? "bg-(--surface-muted) text-[#df8811]"
+                        : "text-(--text-muted) hover:bg-(--surface-muted) hover:text-foreground",
+                    )}
+                  >
+                    <Icon size={18} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <ChevronDown
+                      size={16}
+                      className={cn("transition", reportsOpen ? "rotate-180" : "")}
+                    />
+                  </button>
+                  {reportsOpen
+                    ? item.children
+                        .filter((child) => child.roles.some((itemRole) => itemRole === role))
+                        .map((child) => {
+                          const ChildIcon = child.icon;
+                          const active =
+                            pathname === child.href || pathname.startsWith(`${child.href}/`);
+
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={onCloseMobile}
+                              className={cn(
+                                "ml-3 flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
+                                active
+                                  ? "bg-(--surface-muted) text-[#df8811]"
+                                  : "text-(--text-muted) hover:bg-(--surface-muted) hover:text-foreground",
+                              )}
+                            >
+                              <ChildIcon size={16} />
+                              {child.label}
+                            </Link>
+                          );
+                        })
+                    : null}
+                </div>
+              );
+            }
+
             const Icon = item.icon;
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link

@@ -34,8 +34,9 @@ export default function DutyRosterPage() {
         <p className="page-eyebrow">{isDean ? "Dean of students" : "Roll call management"}</p>
         <h1 className="page-title">Weekly duty roster</h1>
         <p className="mt-2 max-w-3xl text-sm text-(--text-muted)">
-          Assign teachers and staff to dining hall, boarding, tuition areas, games, entertainment, and Sunday service duties
+          Create weeks, assign teachers, save drafts, preview, and publish
           {currentSchool ? ` for ${currentSchool.name}` : ". Select a school in the header to get started"}.
+          After publishing, review history and exports under Reports → Duty Roster Reports.
         </p>
       </section>
 

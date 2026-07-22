@@ -38,6 +38,7 @@ Required in `backend/.env`:
 - `MICROSOFT_CLIENT_ID`
 - `MICROSOFT_ALLOWED_TENANT_IDS`
 - `MICROSOFT_ALLOWED_DOMAINS`
+- `AUTH_AUTO_ACTIVATE_SSO_USERS=true` (teachers auto-activate on first Microsoft sign-in; restrict tenant/domain first)
 - `DYNAMICS_BASE_URL`, `DYNAMICS_TENANT_ID`, `DYNAMICS_CLIENT_ID`, `DYNAMICS_CLIENT_SECRET`, `DYNAMICS_SCOPE`
 
 ### Frontend

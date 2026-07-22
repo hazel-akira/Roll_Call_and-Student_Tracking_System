@@ -20,6 +20,10 @@ const badgeStyles: Record<string, string> = {
   failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   synced:
     "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
+  draft:
+    "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200",
+  published:
+    "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
 };
 
 export function Badge({

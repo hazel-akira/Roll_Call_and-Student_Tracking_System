@@ -5,6 +5,7 @@ use App\Http\Controllers\Attendance\AttendanceRecordController;
 use App\Http\Controllers\Attendance\AttendanceSessionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\MicrosoftAuthController;
+use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DutyRoster\DutyRosterMetaController;
 use App\Http\Controllers\DutyRoster\WeeklyDutyRosterController;
@@ -27,6 +28,8 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware('auth.jwt')->group(function (): void {
             Route::get('me', [MicrosoftAuthController::class, 'me']);
             Route::post('logout', [MicrosoftAuthController::class, 'logout']);
+            Route::get('onboarding/schools', [OnboardingController::class, 'schools']);
+            Route::post('onboarding/schools', [OnboardingController::class, 'assignSchools']);
         });
     });
 
@@ -56,16 +59,23 @@ Route::prefix('v1')->group(function (): void {
         Route::put('attendance-sessions/{attendanceSession}/records', [AttendanceRecordController::class, 'upsert'])->middleware('role:teacher,admin,ict_staff');
 
         Route::get('reports/attendance-summary', [ReportController::class, 'attendanceSummary'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
+        Route::get('reports/attendance-weeks', [ReportController::class, 'attendanceWeeks'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
         Route::get('reports/class-trends', [ReportController::class, 'classTrends'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
         Route::get('reports/student-trends', [ReportController::class, 'studentTrends'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
         Route::get('reports/export', [ReportController::class, 'export'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
         Route::get('reports/exports/{notification}/download', [ReportController::class, 'downloadExport'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
+        Route::get('reports/duty-rosters', [ReportController::class, 'dutyRosters'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
+        Route::get('reports/duty-rosters/{dutyRoster}', [ReportController::class, 'dutyRosterShow'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
+        Route::get('reports/duty-rosters/{dutyRoster}/export', [ReportController::class, 'dutyRosterExport'])->middleware('role:admin,ict_staff,dean_of_students,deputy_dean');
 
         Route::middleware('role:admin,ict_staff,dean_of_students,deputy_dean')->group(function (): void {
             Route::get('duty-roster-meta', [DutyRosterMetaController::class, 'index']);
             Route::get('school-staff', [DutyRosterMetaController::class, 'staff']);
             Route::get('duty-rosters/current', [WeeklyDutyRosterController::class, 'current']);
             Route::post('duty-rosters/{dutyRoster}/reset-template', [WeeklyDutyRosterController::class, 'resetTemplate']);
+            Route::post('duty-rosters/{dutyRoster}/copy-from-previous', [WeeklyDutyRosterController::class, 'copyFromPrevious']);
+            Route::post('duty-rosters/{dutyRoster}/publish', [WeeklyDutyRosterController::class, 'publish']);
+            Route::post('duty-rosters/{dutyRoster}/unpublish', [WeeklyDutyRosterController::class, 'unpublish']);
             Route::apiResource('duty-rosters', WeeklyDutyRosterController::class)->except(['create', 'edit']);
         });
 

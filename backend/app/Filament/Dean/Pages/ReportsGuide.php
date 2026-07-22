@@ -13,7 +13,7 @@ class ReportsGuide extends Page
 
     protected static ?string $navigationLabel = 'Reports';
 
-    protected static ?string $title = 'Attendance reports';
+    protected static ?string $title = 'Reports';
 
     protected static string|UnitEnum|null $navigationGroup = 'Insights';
 
@@ -32,6 +32,13 @@ class ReportsGuide extends Page
     {
         $frontend = rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/');
 
-        return "{$frontend}/reports";
+        return "{$frontend}/reports/attendance";
+    }
+
+    public function getFrontendDutyRosterReportsUrl(): string
+    {
+        $frontend = rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/');
+
+        return "{$frontend}/reports/duty-roster";
     }
 }

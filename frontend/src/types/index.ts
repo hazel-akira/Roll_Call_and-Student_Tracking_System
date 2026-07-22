@@ -18,6 +18,7 @@ export type School = {
   level?: string | null;
   is_junior?: boolean;
   active?: boolean;
+  logo_url?: string | null;
 };
 
 export type AppUser = {
@@ -125,7 +126,19 @@ export type WeeklyDutyRoster = {
   week_start: string;
   week_end?: string | null;
   week_label: string;
+  status: "draft" | "published";
+  published_at?: string | null;
+  published_by?: number | null;
+  published_by_name?: string | null;
   entries: DutyRosterEntry[];
+  sections?: Array<{
+    title: string;
+    rows: Array<{
+      location?: string | null;
+      time_slot?: string | null;
+      staff: string;
+    }>;
+  }>;
 };
 
 export type DutyRosterSummary = {
@@ -134,12 +147,22 @@ export type DutyRosterSummary = {
   week_start: string;
   week_end?: string | null;
   week_label: string;
+  status?: "draft" | "published";
+  published_at?: string | null;
+  published_by?: number | null;
+  published_by_name?: string | null;
   entries_count: number;
 };
 
 export type DutyRosterMeta = {
   categories: Record<string, string>;
   standard_template: Array<{
+    category: string;
+    location: string | null;
+    time_slot: string | null;
+    sort_order: number;
+  }>;
+  school_template?: Array<{
     category: string;
     location: string | null;
     time_slot: string | null;

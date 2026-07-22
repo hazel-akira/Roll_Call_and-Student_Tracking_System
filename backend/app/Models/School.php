@@ -23,10 +23,19 @@ class School extends Model
         'logo_path',
     ];
 
+    protected $appends = [
+        'logo_url',
+    ];
+
     protected $casts = [
         'active' => 'boolean',
         'is_junior' => 'boolean',
     ];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return \App\Support\ReportBranding::logoPublicUrl($this);
+    }
 
     public function classes(): HasMany
     {
@@ -57,6 +66,11 @@ class School extends Model
     public function weeklyDutyRosters(): HasMany
     {
         return $this->hasMany(WeeklyDutyRoster::class);
+    }
+
+    public function dutyRosterTemplateEntries(): HasMany
+    {
+        return $this->hasMany(SchoolDutyRosterTemplateEntry::class)->orderBy('sort_order');
     }
 
     public function rollCallSettings(): HasOne

@@ -8,12 +8,20 @@ use Illuminate\Support\Facades\Storage;
 
 class MicrosoftGraphMailService
 {
-    public function isConfigured(): bool
+    public function hasCredentials(): bool
     {
         return filled(config('services.microsoft_graph.client_id'))
             && filled(config('services.microsoft_graph.client_secret'))
-            && filled(config('services.microsoft_graph.tenant'))
-            && filled(config('services.microsoft_graph.mail_from'));
+            && filled(config('services.microsoft_graph.tenant'));
+    }
+
+    public function isConfigured(?string $mailFrom = null): bool
+    {
+        $from = filled($mailFrom)
+            ? $mailFrom
+            : config('services.microsoft_graph.mail_from');
+
+        return $this->hasCredentials() && filled($from);
     }
 
     /**
@@ -25,6 +33,7 @@ class MicrosoftGraphMailService
         string $subject,
         string $htmlBody,
         array $attachments = [],
+        ?string $mailFrom = null,
     ): void {
         $toEmails = array_values(array_unique(array_filter($toEmails)));
 
@@ -32,18 +41,24 @@ class MicrosoftGraphMailService
             return;
         }
 
-        if (! $this->isConfigured()) {
-            throw new \RuntimeException('Microsoft Graph mail is not configured.');
+        $mailFrom = filled($mailFrom)
+            ? (string) $mailFrom
+            : (string) config('services.microsoft_graph.mail_from');
+
+        if (! $this->isConfigured($mailFrom)) {
+            throw new \RuntimeException(
+                'Microsoft Graph mail is not configured. Set app credentials and a send-as mailbox (school mail_from or MS_GRAPH_MAIL_FROM).'
+            );
         }
 
         Log::info('GRAPH: Sending roll call report email', [
             'to' => $toEmails,
+            'from' => $mailFrom,
             'subject' => $subject,
             'attachment_count' => count($attachments),
         ]);
 
         $accessToken = $this->getAccessToken();
-        $mailFrom = (string) config('services.microsoft_graph.mail_from');
 
         $message = [
             'message' => [

@@ -73,4 +73,17 @@ return [
         'PGJA' => ['pioneergirlsjunioracademy.ac.ke'],
         'SPTA' => ['stpaulthomasacademy.co.ke'],
     ],
+
+    /*
+     * Default Microsoft Graph send-as mailboxes keyed by school code.
+     * schools.mail_from (Filament) overrides these when set.
+     * Falls back to MS_GRAPH_MAIL_FROM when neither is set.
+     */
+    'mail_from' => [
+        'PS' => env('MS_GRAPH_MAIL_FROM_PS'),
+        'PGS' => env('MS_GRAPH_MAIL_FROM_PGS'),
+        'PJA' => env('MS_GRAPH_MAIL_FROM_PJA'),
+        'PGJA' => env('MS_GRAPH_MAIL_FROM_PGJA'),
+        'SPTA' => env('MS_GRAPH_MAIL_FROM_SPTA'),
+    ],
 ];

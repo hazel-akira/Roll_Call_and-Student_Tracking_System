@@ -53,8 +53,10 @@ class RollCallReportService
 
         $pdfPath = $this->pdfGenerator->generateForSession($session);
         $mailable = new RollCallReportMail($session, $pdfPath);
+        $school = $session->classRoom?->school;
+        $mailFrom = $school?->resolvedMailFrom();
 
-        if ($this->shouldUseMicrosoftGraph()) {
+        if ($this->shouldUseMicrosoftGraph($mailFrom)) {
             $this->graphMail->sendMail(
                 $recipients,
                 $mailable->envelope()->subject,
@@ -64,10 +66,13 @@ class RollCallReportService
                     'name' => basename($pdfPath),
                     'mime' => 'application/pdf',
                 ]],
+                $mailFrom,
             );
 
             Log::info('Roll call report sent via Microsoft Graph', [
                 'session_id' => $session->id,
+                'school_id' => $school?->id,
+                'mail_from' => $mailFrom,
                 'recipients' => $recipients,
             ]);
 
@@ -236,12 +241,12 @@ class RollCallReportService
         );
     }
 
-    private function shouldUseMicrosoftGraph(): bool
+    private function shouldUseMicrosoftGraph(?string $mailFrom = null): bool
     {
         if (! config('reports.roll_call_report.use_microsoft_graph', false)) {
             return false;
         }
 
-        return $this->graphMail->isConfigured();
+        return $this->graphMail->isConfigured($mailFrom);
     }
 }

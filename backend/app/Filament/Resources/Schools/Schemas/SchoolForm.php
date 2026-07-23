@@ -40,6 +40,12 @@ class SchoolForm
                             ->maxSize(2048)
                             ->helperText('Optional override for PDF reports. If empty, the default logo for this school code is used (PS, PGS, PJA, PGJA, SPTA). PNG/JPG/WebP, max 2MB.')
                             ->columnSpanFull(),
+                        TextInput::make('mail_from')
+                            ->label('Microsoft Graph send-from')
+                            ->email()
+                            ->maxLength(255)
+                            ->helperText('Mailbox used as From when sending roll call emails via Graph (e.g. noreply@pioneerschools.ac.ke). Overrides MS_GRAPH_MAIL_FROM_PS / MS_GRAPH_MAIL_FROM for this school.')
+                            ->columnSpanFull(),
                         Toggle::make('is_junior')
                             ->label('Junior school'),
                         Toggle::make('active')

@@ -21,6 +21,7 @@ class School extends Model
         'active',
         'dynamics_id',
         'logo_path',
+        'mail_from',
     ];
 
     protected $appends = [
@@ -35,6 +36,27 @@ class School extends Model
     public function getLogoUrlAttribute(): ?string
     {
         return \App\Support\ReportBranding::logoPublicUrl($this);
+    }
+
+    /**
+     * Resolve the Microsoft Graph send-as mailbox for this school.
+     * Order: school.mail_from → config schools.mail_from[code] → MS_GRAPH_MAIL_FROM.
+     */
+    public function resolvedMailFrom(): ?string
+    {
+        if (filled($this->mail_from)) {
+            return (string) $this->mail_from;
+        }
+
+        $code = is_string($this->code) ? $this->code : '';
+        $byCode = config('schools.mail_from.'.$code);
+        if (is_string($byCode) && filled($byCode)) {
+            return $byCode;
+        }
+
+        $fallback = config('services.microsoft_graph.mail_from');
+
+        return filled($fallback) ? (string) $fallback : null;
     }
 
     public function classes(): HasMany

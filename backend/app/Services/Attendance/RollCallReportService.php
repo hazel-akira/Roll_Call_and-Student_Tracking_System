@@ -25,6 +25,10 @@ class RollCallReportService
     public function generateAndSend(AttendanceSession $session): void
     {
         if (! config('reports.roll_call_report.auto_send', true)) {
+            Log::info('Roll call report not sent: auto_send disabled', [
+                'session_id' => $session->id,
+            ]);
+
             return;
         }
 
@@ -38,6 +42,12 @@ class RollCallReportService
         $recipients = $this->getRecipients($session);
 
         if ($recipients === []) {
+            Log::warning('Roll call report not sent: no recipients resolved', [
+                'session_id' => $session->id,
+                'school_id' => $session->classRoom?->school_id,
+                'grade_level' => $session->classRoom?->grade_level,
+            ]);
+
             return;
         }
 
